@@ -1,56 +1,37 @@
 /* ============================================================
-   EQTY Grid Monitor · app.js
-   Supabase-backed community grid bot dashboard
+   EQTY Grid Monitor · app.js  (v2.1 — CORS fix + API submit fix)
    ============================================================ */
-
 'use strict';
 
-// ── Supabase client (tiny REST wrapper, no build step needed) ──
+// ── Supabase REST client ───────────────────────────────────────
 const sb = (() => {
-  const headers = () => ({
+  const h = () => ({
     'apikey': SUPABASE_ANON,
     'Authorization': `Bearer ${SUPABASE_ANON}`,
     'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
+    'Prefer': 'return=representation',
   });
-  const url = (path, qs = '') => `${SUPABASE_URL}/rest/v1/${path}${qs}`;
+  const u = (table, qs = '') => `${SUPABASE_URL}/rest/v1/${table}${qs}`;
   return {
     async select(table, qs = '') {
-      const r = await fetch(url(table, qs), { headers: headers() });
+      const r = await fetch(u(table, qs), { headers: h() });
       if (!r.ok) throw new Error(await r.text());
       return r.json();
     },
     async insert(table, data) {
-      const r = await fetch(url(table), {
-        method: 'POST', headers: headers(), body: JSON.stringify(data)
-      });
+      const r = await fetch(u(table), { method: 'POST', headers: h(), body: JSON.stringify(data) });
       if (!r.ok) throw new Error(await r.text());
       return r.json();
     },
     async remove(table, id) {
-      const r = await fetch(url(table, `?id=eq.${id}`), {
-        method: 'DELETE', headers: headers()
-      });
+      const r = await fetch(u(table, `?id=eq.${id}`), { method: 'DELETE', headers: h() });
       return r.ok;
-    },
-    async patch(table, id, data) {
-      const r = await fetch(url(table, `?id=eq.${id}`), {
-        method: 'PATCH', headers: { ...headers(), 'Prefer': 'return=representation' },
-        body: JSON.stringify(data)
-      });
-      if (!r.ok) throw new Error(await r.text());
-      return r.json();
     },
   };
 })();
 
 // ── State ──────────────────────────────────────────────────────
-const state = {
-  bots: [],
-  livePrice: null,
-  manualPrice: null,
-  supabaseReady: false,
-};
+const state = { bots: [], livePrice: null, manualPrice: null, supabaseReady: false };
 
 // ── DOM refs ───────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -104,42 +85,40 @@ function parseBotText(raw) {
   const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
   const j = lines.join('\n');
   const n = s => { const v = Number(String(s ?? '').replace(/[^0-9+\-.]/g, '')); return isFinite(v) ? v : null; };
-
-  const pairPrice     = j.match(/([A-Z0-9]+\/[A-Z0-9]+)\s*([0-9]*\.?[0-9]+)/);
-  const arbitrage     = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
-  const investment    = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-  const totalProfit   = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-  const totalProfitPct= j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
-  const gpBlock       = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-  const breakEven     = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
-  const rangeBlock    = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-]\s*([0-9]*\.?[0-9]+)\s*\n\s*([0-9]+:[0-9]+)/i);
-  const aprBlock      = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
-  const runtimeLine   = lines.find(l => /\d+d\s+\d+h/i.test(l) || /\d+h\s+\d+m/i.test(l)) || '—';
-
+  const pairPrice      = j.match(/([A-Z0-9]+\/[A-Z0-9]+)\s*([0-9]*\.?[0-9]+)/);
+  const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
+  const investment     = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
+  const totalProfit    = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
+  const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
+  const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
+  const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
+  const rangeBlock     = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-]\s*([0-9]*\.?[0-9]+)\s*\n\s*([0-9]+:[0-9]+)/i);
+  const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
+  const runtimeLine    = lines.find(l => /\d+d\s+\d+h/i.test(l) || /\d+h\s+\d+m/i.test(l)) || '—';
   return {
-    pair:           pairPrice?.[1] ?? 'Unknown',
-    snapshotPrice:  n(pairPrice?.[2]),
-    runtime:        runtimeLine,
-    arb24h:         n(arbitrage?.[1]) ?? 0,
-    arbTotal:       n(arbitrage?.[2]) ?? 0,
-    investment:     n(investment?.[1]) ?? 0,
-    totalProfit:    n(totalProfit?.[1]) ?? 0,
+    pair: pairPrice?.[1] ?? 'EQTY/USDT',
+    snapshotPrice: n(pairPrice?.[2]),
+    runtime: runtimeLine,
+    arb24h: n(arbitrage?.[1]) ?? 0,
+    arbTotal: n(arbitrage?.[2]) ?? 0,
+    investment: n(investment?.[1]) ?? 0,
+    totalProfit: n(totalProfit?.[1]) ?? 0,
     totalProfitPct: n(totalProfitPct?.[1]) ?? 0,
-    gridProfit:     n(gpBlock?.[1]) ?? 0,
-    unrealized:     n(gpBlock?.[2]) ?? 0,
-    breakEven:      n(breakEven?.[1]) ?? 0,
-    rangeLow:       n(rangeBlock?.[1]),
-    rangeHigh:      n(rangeBlock?.[2]),
-    gridBalance:    rangeBlock?.[3] ?? '—',
-    gridApr:        n(aprBlock?.[1]) ?? 0,
-    apr:            n(aprBlock?.[2]) ?? 0,
+    gridProfit: n(gpBlock?.[1]) ?? 0,
+    unrealized: n(gpBlock?.[2]) ?? 0,
+    breakEven: n(breakEven?.[1]) ?? 0,
+    rangeLow: n(rangeBlock?.[1]),
+    rangeHigh: n(rangeBlock?.[2]),
+    gridBalance: rangeBlock?.[3] ?? '—',
+    gridApr: n(aprBlock?.[1]) ?? 0,
+    apr: n(aprBlock?.[2]) ?? 0,
   };
 }
 
 // ── Range health ───────────────────────────────────────────────
 function rangeHealth(price, low, high) {
   if (!isFinite(price) || !isFinite(low) || !isFinite(high))
-    return { label: 'No live price', cls: 'warn', detail: 'Set a price above to enable range checks.', urgency: 1, pct: null };
+    return { label: 'No live price', cls: 'warn', detail: 'Enter price above to enable range checks.', urgency: 1, pct: null };
   if (price < low) {
     const d = ((low - price) / low * 100).toFixed(2);
     return { label: 'Below range', cls: 'out', detail: `Price is ${d}% below the lower bound.`, urgency: 5, pct: 0 };
@@ -149,15 +128,15 @@ function rangeHealth(price, low, high) {
     return { label: 'Above range', cls: 'out', detail: `Price is ${d}% above the upper bound.`, urgency: 5, pct: 100 };
   }
   const pct = (price - low) / (high - low) * 100;
-  if (pct <= 12) return { label: 'Near lower edge', cls: 'warn', detail: 'Bot is in range but close to its buy floor.', urgency: 3, pct };
-  if (pct >= 88) return { label: 'Near upper edge', cls: 'warn', detail: 'Bot is in range but close to selling out.', urgency: 3, pct };
+  if (pct <= 12) return { label: 'Near lower edge', cls: 'warn', detail: 'Bot is close to its buy floor.', urgency: 3, pct };
+  if (pct >= 88) return { label: 'Near upper edge', cls: 'warn', detail: 'Bot is close to selling out.', urgency: 3, pct };
   return { label: 'Healthy', cls: 'ok', detail: 'Price sits comfortably within the configured range.', urgency: 0, pct };
 }
 
 // ── Helpers ────────────────────────────────────────────────────
-const fmt = (n, d = 2) => isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+const fmt  = (n, d = 2) => isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
 const fmtP = n => isFinite(n) ? n.toFixed(6) : '—';
-const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
+const esc  = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
 const currentPrice = () => isFinite(state.manualPrice) ? state.manualPrice : state.livePrice;
 
 // ── Render ─────────────────────────────────────────────────────
@@ -168,23 +147,22 @@ function getVisible() {
   if (sf !== 'all') list = list.filter(b => b.strategy === sf);
   if (af !== 'all') list = list.filter(b => b.health.cls === af);
   switch (el.sortBy.value) {
-    case 'pnl-asc':       list.sort((a,b) => a.totalProfit - b.totalProfit); break;
-    case 'capital-desc':  list.sort((a,b) => b.investment - a.investment); break;
-    case 'alert-first':   list.sort((a,b) => b.health.urgency - a.health.urgency || b.totalProfit - a.totalProfit); break;
-    case 'newest':        list.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-    default:              list.sort((a,b) => b.totalProfit - a.totalProfit);
+    case 'pnl-asc':      list.sort((a, b) => a.totalProfit - b.totalProfit); break;
+    case 'capital-desc': list.sort((a, b) => b.investment - a.investment); break;
+    case 'alert-first':  list.sort((a, b) => b.health.urgency - a.health.urgency || b.totalProfit - a.totalProfit); break;
+    case 'newest':       list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
+    default:             list.sort((a, b) => b.totalProfit - a.totalProfit);
   }
   return list;
 }
 
 function renderKpis(bots) {
   const p = currentPrice();
-  const totalCap  = bots.reduce((s, b) => s + (b.investment ?? 0), 0);
-  const totalPnl  = bots.reduce((s, b) => s + (b.totalProfit ?? 0), 0);
-  const aprs      = bots.filter(b => b.apr > 0).map(b => b.apr);
-  const avgApr    = aprs.length ? aprs.reduce((a,v) => a+v, 0) / aprs.length : null;
-  const alerts    = bots.filter(b => rangeHealth(p, b.rangeLow, b.rangeHigh).urgency >= 3).length;
-
+  const totalCap = bots.reduce((s, b) => s + (b.investment ?? 0), 0);
+  const totalPnl = bots.reduce((s, b) => s + (b.totalProfit ?? 0), 0);
+  const aprs     = bots.filter(b => b.apr > 0).map(b => b.apr);
+  const avgApr   = aprs.length ? aprs.reduce((a, v) => a + v, 0) / aprs.length : null;
+  const alerts   = state.bots.filter(b => rangeHealth(p, b.rangeLow, b.rangeHigh).urgency >= 3).length;
   el.kBotsTotal.textContent = state.bots.length;
   el.kCapital.textContent   = `${fmt(totalCap)} USDT`;
   el.kPnl.textContent       = `${totalPnl >= 0 ? '+' : ''}${fmt(totalPnl)} USDT`;
@@ -202,12 +180,12 @@ function renderCards(bots) {
   el.emptyState.hidden = bots.length > 0;
   const p = currentPrice();
   el.cardsGrid.innerHTML = bots.map(b => {
-    const h       = b.health;
-    const pnlCls  = b.totalProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
-    const buf     = isFinite(p) && b.breakEven > 0 ? ((p - b.breakEven) / b.breakEven * 100) : null;
-    const barPct  = h.pct != null ? Math.min(100, Math.max(0, h.pct)) : 50;
-    const apiTag  = b.apiLinked ? `<span class="badge badge-api">API</span>` : '';
-    const rangeWidth = (isFinite(b.rangeHigh) && isFinite(b.rangeLow)) ? ((b.rangeHigh - b.rangeLow) / b.rangeLow * 100).toFixed(1) : '—';
+    const h      = b.health;
+    const pnlCls = b.totalProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
+    const buf    = isFinite(p) && b.breakEven > 0 ? ((p - b.breakEven) / b.breakEven * 100) : null;
+    const barPct = h.pct != null ? Math.min(100, Math.max(0, h.pct)) : 50;
+    const rw     = (isFinite(b.rangeHigh) && isFinite(b.rangeLow)) ? ((b.rangeHigh - b.rangeLow) / b.rangeLow * 100).toFixed(1) : '—';
+    const apiTag = b.apiLinked ? `<span class="badge badge-api">API</span>` : '';
     return `
     <article class="panel bot-card" id="card-${esc(b.id)}">
       <div class="card-header">
@@ -219,7 +197,7 @@ function renderCards(bots) {
             ${apiTag}
           </div>
         </div>
-        <button class="card-remove" onclick="removeBot('${esc(b.id)}')" aria-label="Remove ${esc(b.owner)}'s bot">✕</button>
+        <button class="card-remove" onclick="removeBot('${esc(b.id)}')" aria-label="Remove bot">✕</button>
       </div>
       <div>
         <div class="helper">${esc(b.pair)} · ${esc(b.runtime)}</div>
@@ -229,9 +207,9 @@ function renderCards(bots) {
         </div>
       </div>
       <div class="range-bar-wrap">
-        <div style="display:flex;justify-content:space-between;margin-bottom:.25rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
           <span class="helper">${fmtP(b.rangeLow)}</span>
-          <span class="helper">${rangeWidth}% wide</span>
+          <span class="helper">${rw}% wide</span>
           <span class="helper">${fmtP(b.rangeHigh)}</span>
         </div>
         <div class="range-bar-track">
@@ -262,13 +240,12 @@ function renderTable(bots) {
   el.tableEmpty.style.display = bots.length ? 'none' : 'block';
   el.botTableBody.innerHTML = bots.map(b => {
     const h = b.health;
-    const pnlSign = b.totalProfit >= 0 ? '+' : '';
     return `<tr>
       <td>${esc(b.owner)}</td>
       <td><span class="badge badge-strategy">${esc(b.strategy)}</span></td>
       <td>${fmtP(b.rangeLow)}–${fmtP(b.rangeHigh)}</td>
       <td><span class="badge badge-${h.cls}">${esc(h.label)}</span></td>
-      <td style="color:${b.totalProfit >= 0 ? 'var(--color-success)' : 'var(--color-error)'}">${pnlSign}${fmt(b.totalProfit)} USDT</td>
+      <td style="color:${b.totalProfit >= 0 ? 'var(--color-success)' : 'var(--color-error)'}">${b.totalProfit >= 0 ? '+' : ''}${fmt(b.totalProfit)} USDT</td>
       <td>${fmt(b.investment)}</td>
       <td>${fmtP(b.breakEven)}</td>
       <td>${fmt(b.apr)}%</td>
@@ -288,7 +265,7 @@ function render() {
 // ── Remove bot ────────────────────────────────────────────────
 window.removeBot = async (id) => {
   if (state.supabaseReady) {
-    try { await sb.remove('bots', id); } catch { /* offline fallback */ }
+    try { await sb.remove('bots', id); } catch (e) { console.warn('Remove failed:', e); }
   }
   state.bots = state.bots.filter(b => b.id !== id);
   render();
@@ -298,40 +275,41 @@ window.removeBot = async (id) => {
 async function submitPasteBot() {
   const raw = el.botPasteInput.value.trim();
   if (!raw) { showMsg(el.submitMsg, 'Paste a KuCoin bot snapshot first.', 'error'); return; }
-  const owner = el.ownerInput.value.trim() || 'Anonymous';
+  const owner    = el.ownerInput.value.trim() || 'Anonymous';
   const strategy = el.strategyInput.value;
-  const note = el.noteInput.value.trim();
-  const parsed = parseBotText(raw);
-  const record = { owner, strategy, note, ...parsed, apiLinked: false, createdAt: new Date().toISOString() };
-
+  const note     = el.noteInput.value.trim();
+  const parsed   = parseBotText(raw);
   el.submitPaste.disabled = true;
   el.submitPaste.textContent = 'Saving…';
 
+  const record = {
+    owner, strategy, note, ...parsed,
+    apiLinked: false,
+    createdAt: new Date().toISOString(),
+    id: crypto.randomUUID(),
+  };
+
   if (state.supabaseReady) {
     try {
-      const [saved] = await sb.insert('bots', {
-        owner, strategy, note, pair: parsed.pair,
-        snapshot_price: parsed.snapshotPrice,
-        runtime: parsed.runtime,
-        arb_24h: parsed.arb24h, arb_total: parsed.arbTotal,
+      const rows = await sb.insert('bots', {
+        owner, strategy, note,
+        pair: parsed.pair, snapshot_price: parsed.snapshotPrice,
+        runtime: parsed.runtime, arb_24h: parsed.arb24h, arb_total: parsed.arbTotal,
         investment: parsed.investment, total_profit: parsed.totalProfit,
-        total_profit_pct: parsed.totalProfitPct,
-        grid_profit: parsed.gridProfit, unrealized: parsed.unrealized,
-        break_even: parsed.breakEven,
+        total_profit_pct: parsed.totalProfitPct, grid_profit: parsed.gridProfit,
+        unrealized: parsed.unrealized, break_even: parsed.breakEven,
         range_low: parsed.rangeLow, range_high: parsed.rangeHigh,
-        grid_balance: parsed.gridBalance,
-        grid_apr: parsed.gridApr, apr: parsed.apr,
+        grid_balance: parsed.gridBalance, grid_apr: parsed.gridApr, apr: parsed.apr,
         api_linked: false,
       });
-      record.id = saved.id;
+      // Use the DB-assigned id if available
+      if (rows?.[0]?.id) record.id = rows[0].id;
       showMsg(el.submitMsg, '✓ Bot saved to community dashboard.', 'success');
     } catch (err) {
-      showMsg(el.submitMsg, `Supabase error: ${err.message} — saved locally.`, 'error');
-      record.id = crypto.randomUUID();
+      showMsg(el.submitMsg, `Saved locally only (DB error: ${err.message}).`, 'error');
     }
   } else {
-    record.id = crypto.randomUUID();
-    showMsg(el.submitMsg, '⚠ Supabase not configured — bot saved locally only.', 'error');
+    showMsg(el.submitMsg, '⚠ Supabase not configured — saved locally only.', 'error');
   }
 
   state.bots.unshift(record);
@@ -341,36 +319,60 @@ async function submitPasteBot() {
   el.noteInput.value = '';
   el.submitPaste.disabled = false;
   el.submitPaste.textContent = 'Submit bot';
-  setTimeout(() => closeModal(), 800);
+  setTimeout(closeModal, 600);
 }
 
-// ── Submit (API key) ──────────────────────────────────────────
+// ── Submit (API key) — FIXED ──────────────────────────────────
 async function submitApiBot() {
-  const key = el.apiKey.value.trim(), secret = el.apiSecret.value.trim(), pass = el.apiPassphrase.value.trim();
-  if (!key || !secret || !pass) { showMsg(el.apiMsg, 'All three API fields are required.', 'error'); return; }
-  const owner = el.apiOwner.value.trim() || 'Anonymous';
+  const key  = el.apiKey.value.trim();
+  const sec  = el.apiSecret.value.trim();
+  const pass = el.apiPassphrase.value.trim();
+  if (!key || !sec || !pass) { showMsg(el.apiMsg, 'All three API fields are required.', 'error'); return; }
+  const owner    = el.apiOwner.value.trim() || 'Anonymous';
   const strategy = el.apiStrategy.value;
-  el.submitApi.disabled = true; el.submitApi.textContent = 'Saving…';
+  el.submitApi.disabled = true;
+  el.submitApi.textContent = 'Syncing…';
 
-  if (state.supabaseReady) {
-    try {
-      // API creds are passed to a Supabase Edge Function that stores them encrypted
-      // and performs the first fetch. The public table only stores the fetched stats.
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-kucoin-bot`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ owner, strategy, apiKey: key, apiSecret: secret, apiPassphrase: pass })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      showMsg(el.apiMsg, '✓ API key stored. Bot will auto-sync every 5 minutes.', 'success');
-      await loadBots();
-    } catch (err) {
-      showMsg(el.apiMsg, `Error: ${err.message}`, 'error');
-    }
-  } else {
-    showMsg(el.apiMsg, '⚠ Supabase not configured. API sync requires a Supabase project.', 'error');
+  if (!state.supabaseReady) {
+    showMsg(el.apiMsg, '⚠ Supabase not configured. API sync requires a live Supabase project.', 'error');
+    el.submitApi.disabled = false;
+    el.submitApi.textContent = 'Save & sync';
+    return;
   }
-  el.submitApi.disabled = false; el.submitApi.textContent = 'Save & sync';
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-kucoin-bot`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ owner, strategy, apiKey: key, apiSecret: sec, apiPassphrase: pass }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(json?.error ?? `HTTP ${res.status}`);
+    }
+
+    showMsg(el.apiMsg, `✓ Synced ${json.synced ?? 0} bot(s). Refreshing…`, 'success');
+
+    // Wait briefly for DB write to propagate, then reload
+    await new Promise(r => setTimeout(r, 1200));
+    await loadBots();
+
+    el.apiKey.value = '';
+    el.apiSecret.value = '';
+    el.apiPassphrase.value = '';
+    setTimeout(closeModal, 800);
+
+  } catch (err) {
+    showMsg(el.apiMsg, `Error: ${err.message}`, 'error');
+  }
+
+  el.submitApi.disabled = false;
+  el.submitApi.textContent = 'Save & sync';
 }
 
 // ── Load from Supabase ────────────────────────────────────────
@@ -379,47 +381,85 @@ async function loadBots() {
   try {
     const rows = await sb.select('bots', '?order=created_at.desc');
     state.bots = rows.map(r => ({
-      id: r.id, owner: r.owner, strategy: r.strategy, note: r.note ?? '',
-      pair: r.pair ?? 'EQTY/USDT', snapshotPrice: r.snapshot_price,
-      runtime: r.runtime ?? '—', arb24h: r.arb_24h ?? 0, arbTotal: r.arb_total ?? 0,
-      investment: r.investment ?? 0, totalProfit: r.total_profit ?? 0,
+      id: r.id,
+      owner: r.owner,
+      strategy: r.strategy,
+      note: r.note ?? '',
+      pair: r.pair ?? 'EQTY/USDT',
+      snapshotPrice: r.snapshot_price,
+      runtime: r.runtime ?? '—',
+      arb24h: r.arb_24h ?? 0,
+      arbTotal: r.arb_total ?? 0,
+      investment: r.investment ?? 0,
+      totalProfit: r.total_profit ?? 0,
       totalProfitPct: r.total_profit_pct ?? 0,
-      gridProfit: r.grid_profit ?? 0, unrealized: r.unrealized ?? 0,
-      breakEven: r.break_even ?? 0, rangeLow: r.range_low, rangeHigh: r.range_high,
-      gridBalance: r.grid_balance ?? '—', gridApr: r.grid_apr ?? 0, apr: r.apr ?? 0,
-      apiLinked: r.api_linked ?? false, createdAt: r.created_at,
+      gridProfit: r.grid_profit ?? 0,
+      unrealized: r.unrealized ?? 0,
+      breakEven: r.break_even ?? 0,
+      rangeLow: r.range_low,
+      rangeHigh: r.range_high,
+      gridBalance: r.grid_balance ?? '—',
+      gridApr: r.grid_apr ?? 0,
+      apr: r.apr ?? 0,
+      apiLinked: r.api_linked ?? false,
+      createdAt: r.created_at,
     }));
     render();
   } catch (err) {
-    console.warn('Supabase load failed:', err.message);
+    console.warn('Supabase load error:', err.message);
   }
 }
 
-// ── Live price ────────────────────────────────────────────────
+// ── Live price — CORS-safe multi-source ───────────────────────
 async function fetchPrice() {
-  try {
-    const r = await fetch('https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=EQTY-USDT');
-    if (!r.ok) throw new Error();
-    const d = await r.json();
-    const p = Number(d?.data?.price);
-    if (!isFinite(p)) throw new Error();
-    state.livePrice = p;
-    el.priceVal.textContent = p.toFixed(6);
-    el.priceDot.className = 'price-dot live';
-    render();
-  } catch {
-    el.priceDot.className = 'price-dot error';
-    if (!isFinite(state.manualPrice)) el.priceVal.textContent = 'n/a';
+  // Strategy: try multiple public endpoints that allow browser CORS
+  const sources = [
+    // 1. CoinGecko public API (no key, CORS-open)
+    async () => {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=eqty&vs_currencies=usd', { signal: AbortSignal.timeout(5000) });
+      const d = await r.json();
+      const p = d?.eqty?.usd;
+      if (p && isFinite(Number(p))) return Number(p);
+      throw new Error('No EQTY on CoinGecko');
+    },
+    // 2. KuCoin via allorigins CORS proxy (last resort)
+    async () => {
+      const target = encodeURIComponent('https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=EQTY-USDT');
+      const r = await fetch(`https://api.allorigins.win/get?url=${target}`, { signal: AbortSignal.timeout(7000) });
+      const wrapper = await r.json();
+      const d = JSON.parse(wrapper.contents);
+      const p = Number(d?.data?.price);
+      if (isFinite(p) && p > 0) return p;
+      throw new Error('Invalid price from proxy');
+    },
+  ];
+
+  for (const source of sources) {
+    try {
+      const price = await source();
+      state.livePrice = price;
+      el.priceVal.textContent = price.toFixed(6);
+      el.priceDot.className = 'price-dot live';
+      render();
+      return;
+    } catch (_) {
+      // try next source
+    }
+  }
+
+  // All sources failed
+  el.priceDot.className = 'price-dot error';
+  if (!isFinite(state.manualPrice)) {
+    el.priceVal.textContent = 'unavailable';
   }
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-function showMsg(el, msg, type) {
-  el.textContent = msg;
-  el.className = `submit-msg helper ${type}`;
-  setTimeout(() => { el.textContent = ''; el.className = 'submit-msg helper'; }, 6000);
+function showMsg(elem, msg, type) {
+  elem.textContent = msg;
+  elem.className = `submit-msg helper ${type}`;
+  setTimeout(() => { elem.textContent = ''; elem.className = 'submit-msg helper'; }, 7000);
 }
-
 function closeModal() {
   el.submitModal.hidden = true;
   document.body.style.overflow = '';
@@ -428,19 +468,17 @@ function openModal() {
   el.submitModal.hidden = false;
   document.body.style.overflow = 'hidden';
 }
-
 function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   el.themeIcon.innerHTML = t === 'dark'
     ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
     : '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
 }
-
 function exportJson() {
   const blob = new Blob([JSON.stringify(state.bots, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `eqty-grid-bots-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `eqty-grid-bots-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -448,9 +486,10 @@ function exportJson() {
 // ── Tab switching ─────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+    document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
     document.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
-    tab.classList.add('active'); tab.setAttribute('aria-selected','true');
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
     document.getElementById('tab-' + tab.dataset.tab).hidden = false;
   });
 });
@@ -463,7 +502,7 @@ el.submitModal.addEventListener('click', e => { if (e.target === el.submitModal)
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 el.submitPaste.addEventListener('click', submitPasteBot);
 el.submitApi.addEventListener('click', submitApiBot);
-el.loadSample.addEventListener('click', () => { el.botPasteInput.value = SAMPLE_PASTE; el.ownerInput.value = '@you'; });
+el.loadSample.addEventListener('click', () => { el.botPasteInput.value = SAMPLE_PASTE; el.ownerInput.value = '@you'; el.strategyInput.value = 'A'; });
 el.refreshBtn.addEventListener('click', () => { fetchPrice(); loadBots(); });
 el.exportBtn.addEventListener('click', exportJson);
 el.filterStrategy.addEventListener('change', render);
@@ -477,19 +516,16 @@ el.botPasteInput.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey)
 
 // ── Init ──────────────────────────────────────────────────────
 (async function init() {
-  // Check if Supabase is configured
   state.supabaseReady = (
     typeof SUPABASE_URL === 'string' && SUPABASE_URL.includes('supabase.co') &&
     typeof SUPABASE_ANON === 'string' && SUPABASE_ANON.length > 10
   );
-
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(prefersDark ? 'dark' : 'light');
-
   render();
-  await fetchPrice();
+  fetchPrice();
   await loadBots();
-
   setInterval(fetchPrice, PRICE_INTERVAL);
   setInterval(loadBots, BOT_INTERVAL);
 })();
+
