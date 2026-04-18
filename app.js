@@ -522,6 +522,7 @@ el.botPasteInput.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey)
   );
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(prefersDark ? 'dark' : 'light');
+  document.querySelector('[data-tab="api"]').style.display = 'none';
   render();
   fetchPrice();
   await loadBots();
