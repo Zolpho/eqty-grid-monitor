@@ -83,7 +83,7 @@ Grid APR/APR
 function parseBotText(raw) {
   const text = raw.replace(/\u00a0/g, ' ').trim();
   const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
-  const j = lines.join('\n');
+  const j = lines.join('\n').replace(/(\d)\n:\n(\d)/g, '$1:$2');
   const n = s => { const v = Number(String(s ?? '').replace(/[^0-9+\-.]/g, '')); return isFinite(v) ? v : null; };
   const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
   const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
