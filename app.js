@@ -413,27 +413,30 @@ async function loadBots() {
 // ── Live price — CORS-safe multi-source ───────────────────────
 async function fetchPrice() {
   const pair = (state.bots[0]?.pair ?? 'EQTY/USDT').replace('/', '-');
+  const kuLevel1 = `https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${pair}`;
+  const kuStats  = `https://api.kucoin.com/api/v1/market/stats?symbol=${pair}`;
+  const proxy    = url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
   const sources = [
     async () => {
-      const r = await fetch(`https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${pair}`, { signal: AbortSignal.timeout(4000) });
+      const r = await fetch(proxy(kuLevel1), { signal: AbortSignal.timeout(5000) });
       const d = await r.json();
       const p = Number(d?.data?.price ?? d?.data?.bestAsk);
       if (isFinite(p) && p > 0) return p;
-      throw new Error('No price from KuCoin level1');
+      throw new Error('KuCoin level1 no price');
     },
     async () => {
-      const r = await fetch(`https://api.kucoin.com/api/v1/market/stats?symbol=${pair}`, { signal: AbortSignal.timeout(4000) });
+      const r = await fetch(proxy(kuStats), { signal: AbortSignal.timeout(5000) });
       const d = await r.json();
       const p = Number(d?.data?.last);
       if (isFinite(p) && p > 0) return p;
-      throw new Error('No price from KuCoin stats');
+      throw new Error('KuCoin stats no price');
     },
     async () => {
-      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=eqty&vs_currencies=usd', { signal: AbortSignal.timeout(5000) });
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=eqty&vs_currencies=usd', { signal: AbortSignal.timeout(6000) });
       const d = await r.json();
       const p = Number(d?.eqty?.usd);
       if (isFinite(p) && p > 0) return p;
-      throw new Error('No EQTY on CoinGecko');
+      throw new Error('CoinGecko no price');
     },
   ];
   for (const source of sources) {
@@ -449,6 +452,7 @@ async function fetchPrice() {
   el.priceDot.className = 'price-dot error';
   if (!isFinite(state.manualPrice)) el.priceVal.textContent = 'unavailable';
 }
+
 
 // ── Helpers ───────────────────────────────────────────────────
 function showMsg(elem, msg, type) {
