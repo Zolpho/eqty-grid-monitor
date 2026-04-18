@@ -412,28 +412,30 @@ async function loadBots() {
 
 // ── Live price — CORS-safe multi-source ───────────────────────
 async function fetchPrice() {
-  // Strategy: try multiple public endpoints that allow browser CORS
+  const pair = (state.bots[0]?.pair ?? 'EQTY/USDT').replace('/', '-');
   const sources = [
-    // 1. CoinGecko public API (no key, CORS-open)
+    async () => {
+      const r = await fetch(`https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${pair}`, { signal: AbortSignal.timeout(4000) });
+      const d = await r.json();
+      const p = Number(d?.data?.price ?? d?.data?.bestAsk);
+      if (isFinite(p) && p > 0) return p;
+      throw new Error('No price from KuCoin level1');
+    },
+    async () => {
+      const r = await fetch(`https://api.kucoin.com/api/v1/market/stats?symbol=${pair}`, { signal: AbortSignal.timeout(4000) });
+      const d = await r.json();
+      const p = Number(d?.data?.last);
+      if (isFinite(p) && p > 0) return p;
+      throw new Error('No price from KuCoin stats');
+    },
     async () => {
       const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=eqty&vs_currencies=usd', { signal: AbortSignal.timeout(5000) });
       const d = await r.json();
-      const p = d?.eqty?.usd;
-      if (p && isFinite(Number(p))) return Number(p);
+      const p = Number(d?.eqty?.usd);
+      if (isFinite(p) && p > 0) return p;
       throw new Error('No EQTY on CoinGecko');
     },
-    // 2. KuCoin via allorigins CORS proxy (last resort)
-    async () => {
-      const target = encodeURIComponent('https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=EQTY-USDT');
-      const r = await fetch(`https://api.allorigins.win/get?url=${target}`, { signal: AbortSignal.timeout(7000) });
-      const wrapper = await r.json();
-      const d = JSON.parse(wrapper.contents);
-      const p = Number(d?.data?.price);
-      if (isFinite(p) && p > 0) return p;
-      throw new Error('Invalid price from proxy');
-    },
   ];
-
   for (const source of sources) {
     try {
       const price = await source();
@@ -442,16 +444,10 @@ async function fetchPrice() {
       el.priceDot.className = 'price-dot live';
       render();
       return;
-    } catch (_) {
-      // try next source
-    }
+    } catch (_) {}
   }
-
-  // All sources failed
   el.priceDot.className = 'price-dot error';
-  if (!isFinite(state.manualPrice)) {
-    el.priceVal.textContent = 'unavailable';
-  }
+  if (!isFinite(state.manualPrice)) el.priceVal.textContent = 'unavailable';
 }
 
 // ── Helpers ───────────────────────────────────────────────────
