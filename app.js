@@ -528,4 +528,3 @@ el.botPasteInput.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey)
   setInterval(fetchPrice, PRICE_INTERVAL);
   setInterval(loadBots, BOT_INTERVAL);
 })();
-
