@@ -85,7 +85,7 @@ function parseBotText(raw) {
   const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
   const j = lines.join('\n');
   const n = s => { const v = Number(String(s ?? '').replace(/[^0-9+\-.]/g, '')); return isFinite(v) ? v : null; };
-  const pairPrice      = j.match(/([A-Z0-9]+\/[A-Z0-9]+)\s*([0-9]*\.?[0-9]+)/);
+  const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
   const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
   const investment     = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const totalProfit    = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
@@ -395,9 +395,9 @@ async function loadBots() {
       totalProfitPct: r.total_profit_pct ?? 0,
       gridProfit: r.grid_profit ?? 0,
       unrealized: r.unrealized ?? 0,
-      breakEven: r.break_even ?? 0,
-      rangeLow: r.range_low,
-      rangeHigh: r.range_high,
+      breakEven: r.break_even ?? null,
+      rangeLow: r.range_low ?? null,
+      rangeHigh: r.range_high ?? null,
       gridBalance: r.grid_balance ?? '—',
       gridApr: r.grid_apr ?? 0,
       apr: r.apr ?? 0,
@@ -522,7 +522,6 @@ el.botPasteInput.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey)
   );
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(prefersDark ? 'dark' : 'light');
-  document.querySelector('[data-tab="api"]').style.display = 'none';
   render();
   fetchPrice();
   await loadBots();
