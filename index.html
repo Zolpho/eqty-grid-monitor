@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>EQTY Grid Monitor</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@500,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+  <a href="#main" class="sr-only">Skip to content</a>
+
+  <!-- TOP BAR -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="EQTY Grid Monitor">
+        <path d="M7 32 L18 18 L26 26 L38 12"/>
+        <circle cx="18" cy="18" r="2.5" fill="currentColor" stroke="none"/>
+        <circle cx="26" cy="26" r="2.5" fill="currentColor" stroke="none"/>
+        <circle cx="38" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+        <path d="M7 38 h34" stroke-width="1.5" stroke-dasharray="3 2"/>
+      </svg>
+      <span class="brand-name">EQTY Grid Monitor</span>
+      <span class="badge badge-version">v2</span>
+    </div>
+    <div class="topbar-right">
+      <div class="price-pill" id="pricePill">
+        <span class="price-label">EQTY/USDT</span>
+        <span class="price-value" id="priceVal">—</span>
+        <span class="price-dot" id="priceDot"></span>
+      </div>
+      <button class="icon-btn" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+        <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="btn btn-primary" id="openSubmitModal">+ Add bot</button>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT -->
+  <div class="app-layout" id="main">
+
+    <!-- KPI ROW -->
+    <section class="kpi-row" aria-label="Summary">
+      <div class="kpi-card panel"><div class="kpi-label">Community bots</div><div class="kpi-value" id="kBotsTotal">0</div></div>
+      <div class="kpi-card panel"><div class="kpi-label">Total capital</div><div class="kpi-value" id="kCapital">0 USDT</div></div>
+      <div class="kpi-card panel"><div class="kpi-label">Total P&amp;L</div><div class="kpi-value kpi-pnl" id="kPnl">+0 USDT</div></div>
+      <div class="kpi-card panel"><div class="kpi-label">Avg APR</div><div class="kpi-value" id="kApr">—</div></div>
+      <div class="kpi-card panel"><div class="kpi-label">Active alerts</div><div class="kpi-value kpi-alert" id="kAlerts">0</div></div>
+    </section>
+
+    <!-- TOOLBAR -->
+    <section class="toolbar-row">
+      <div class="toolbar-left">
+        <select id="filterStrategy" aria-label="Filter by strategy"><option value="all">All strategies</option><option value="A">A – Starter</option><option value="B">B – Core</option><option value="C">C – Wide</option><option value="D">D – Bull</option><option value="E">E – Dip</option><option value="Custom">Custom</option></select>
+        <select id="sortBy" aria-label="Sort by"><option value="pnl-desc">Highest P&amp;L</option><option value="pnl-asc">Lowest P&amp;L</option><option value="capital-desc">Most capital</option><option value="alert-first">Alerts first</option><option value="newest">Newest first</option></select>
+        <select id="filterAlert" aria-label="Filter by status"><option value="all">All statuses</option><option value="ok">Healthy</option><option value="warn">Near edge</option><option value="out">Out of range</option></select>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-ghost" id="refreshBtn">↻ Refresh</button>
+        <button class="btn btn-ghost" id="exportBtn">⬇ Export JSON</button>
+      </div>
+    </section>
+
+    <!-- CARDS -->
+    <section class="cards-grid" id="cardsGrid" aria-label="Bot cards"></section>
+    <div class="empty-state" id="emptyState" hidden>
+      <div class="empty-icon">⬡</div>
+      <p>No bots submitted yet.</p>
+      <button class="btn btn-primary" id="emptyAddBtn">Add the first bot</button>
+    </div>
+
+    <!-- TABLE -->
+    <section class="table-section">
+      <h2 class="section-title">Compact overview</h2>
+      <div class="table-wrap panel">
+        <table>
+          <thead><tr>
+            <th>Owner</th><th>Strategy</th><th>Range</th><th>Status</th>
+            <th>Total P&amp;L</th><th>Capital</th><th>Break-even</th><th>APR</th><th>Arb 24h/∑</th>
+          </tr></thead>
+          <tbody id="botTableBody"></tbody>
+        </table>
+        <div id="tableEmpty" class="table-empty">No data.</div>
+      </div>
+    </section>
+
+    <!-- API INFO -->
+    <section class="panel info-panel">
+      <h2 class="section-title">KuCoin API auto-sync</h2>
+      <div class="info-grid">
+        <div>
+          <p>Community members can optionally link their own KuCoin <strong>read-only API key</strong> when submitting a bot. The dashboard will automatically re-fetch their stats every 5 minutes using the KuCoin <code>GET /api/v2/grid/spot/bots</code> endpoint, removing the need for manual paste updates.</p>
+          <p>Only <strong>read-only</strong> keys are ever stored — no trading permissions required or accepted.</p>
+        </div>
+        <div>
+          <h3>What auto-sync fetches</h3>
+          <ul>
+            <li>Current investment &amp; total profit</li>
+            <li>Grid profit vs unrealized PNL</li>
+            <li>Arbitrage count (24h &amp; total)</li>
+            <li>Bot status (running / stopped)</li>
+            <li>Break-even &amp; APR</li>
+          </ul>
+          <p class="helper">API keys are stored encrypted in Supabase and are never exposed to other users. You control deletion from your settings.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <span>EQTY Grid Monitor · Community liquidity dashboard</span>
+      <span id="lastRefresh" class="helper"></span>
+    </footer>
+  </div>
+
+  <!-- SUBMIT MODAL -->
+  <div class="modal-overlay" id="submitModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modalTitle">Add your bot</h2>
+        <button class="icon-btn" id="closeModal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="tabs" role="tablist">
+          <button class="tab active" role="tab" aria-selected="true" data-tab="paste">Paste snapshot</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="api">API key sync</button>
+        </div>
+
+        <!-- PASTE TAB -->
+        <div class="tab-panel" id="tab-paste">
+          <div class="field"><label for="ownerInput">Your handle / name</label><input id="ownerInput" type="text" placeholder="@you" autocomplete="nickname"></div>
+          <div class="field"><label for="strategyInput">Strategy</label>
+            <select id="strategyInput">
+              <option value="A">A – Starter (0.0023–0.0031, 8 grids)</option>
+              <option value="B">B – Core (0.0022–0.0032, 10 grids)</option>
+              <option value="C">C – Wide (0.0020–0.0034, 12 grids)</option>
+              <option value="D">D – Bull (0.0026–0.0038, 10 grids)</option>
+              <option value="E">E – Dip (0.0018–0.0030, 10 grids)</option>
+              <option value="Custom">Custom range</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="botPasteInput">KuCoin bot snapshot <span class="helper">(copy the full text from the KuCoin app)</span></label>
+            <textarea id="botPasteInput" rows="11" placeholder="Spot Grid&#10;EQTY/USDT0.002806&#10;6d 18h 20m&#10;24h/Total Arbitrage: 5/10 time(s)&#10;Investment(USDT)&#10;728.892428&#10;..."></textarea>
+          </div>
+          <div class="field"><label for="noteInput">Note (optional)</label><input id="noteInput" type="text" placeholder="e.g. running since April 15 on spare capital"></div>
+          <div class="modal-foot">
+            <button class="btn btn-ghost" id="loadSample">Load sample</button>
+            <button class="btn btn-primary" id="submitPaste">Submit bot</button>
+          </div>
+          <p id="submitMsg" class="submit-msg helper" aria-live="polite"></p>
+        </div>
+
+        <!-- API TAB -->
+        <div class="tab-panel" id="tab-api" hidden>
+          <div class="info-box">
+            <strong>Auto-sync via read-only API key</strong><br>
+            Generate a <em>read-only</em> API key in KuCoin → Settings → API Management. Never share a key that has trading or withdrawal permissions.
+          </div>
+          <div class="field"><label for="apiOwner">Your handle</label><input id="apiOwner" type="text" placeholder="@you"></div>
+          <div class="field"><label for="apiKey">KuCoin API Key</label><input id="apiKey" type="text" placeholder="Key (read-only)" autocomplete="off"></div>
+          <div class="field"><label for="apiSecret">API Secret</label><input id="apiSecret" type="password" placeholder="Secret" autocomplete="off"></div>
+          <div class="field"><label for="apiPassphrase">Passphrase</label><input id="apiPassphrase" type="password" placeholder="Passphrase" autocomplete="off"></div>
+          <div class="field">
+            <label for="apiStrategy">Strategy</label>
+            <select id="apiStrategy">
+              <option value="A">A – Starter</option><option value="B">B – Core</option>
+              <option value="C">C – Wide</option><option value="D">D – Bull</option>
+              <option value="E">E – Dip</option><option value="Custom">Custom</option>
+            </select>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-primary" id="submitApi">Save &amp; sync</button>
+          </div>
+          <p id="apiMsg" class="submit-msg helper" aria-live="polite"></p>
+          <p class="helper" style="margin-top:1rem">Keys are stored encrypted server-side via Supabase Edge Function. They are never readable by other dashboard users. You can revoke access any time by deleting the bot entry and revoking the key in KuCoin.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
