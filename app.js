@@ -93,7 +93,8 @@ function parseBotText(raw) {
   const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
   const rangeBlock     = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-]\s*([0-9]*\.?[0-9]+)\s*\n\s*([0-9]+:[0-9]+)/i);
-  const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
+  const gridAprMatch   = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
+  const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*[+\-]?[0-9]*\.?[0-9]+%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
   const runtimeLine    = lines.find(l => /\d+d\s+\d+h/i.test(l) || /\d+h\s+\d+m/i.test(l)) || '—';
   return {
     pair: pairPrice?.[1] ?? 'EQTY/USDT',
@@ -110,8 +111,8 @@ function parseBotText(raw) {
     rangeLow: n(rangeBlock?.[1]),
     rangeHigh: n(rangeBlock?.[2]),
     gridBalance: rangeBlock?.[3] ?? '—',
-    gridApr: n(aprBlock?.[1]) ?? 0,
-    apr: n(aprBlock?.[2]) ?? 0,
+    gridApr: n(gridAprMatch?.[1]) || 0,
+    apr: n(aprBlock?.[1]) || n(gridAprMatch?.[1]) || 0,
   };
 }
 
@@ -182,7 +183,7 @@ function renderCards(bots) {
   el.cardsGrid.innerHTML = bots.map(b => {
     const h      = b.health;
     const pnlCls = b.totalProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
-    const buf    = isFinite(p) && b.breakEven > 0 ? ((p - b.breakEven) / b.breakEven * 100) : null;
+    const buf    = isFinite(p) && Number(b.breakEven) > 0 ? ((p - Number(b.breakEven)) / Number(b.breakEven) * 100) : null;
     const barPct = h.pct != null ? Math.min(100, Math.max(0, h.pct)) : 50;
     const rw     = (isFinite(b.rangeHigh) && isFinite(b.rangeLow)) ? ((b.rangeHigh - b.rangeLow) / b.rangeLow * 100).toFixed(1) : '—';
     const apiTag = b.apiLinked ? `<span class="badge badge-api">API</span>` : '';
