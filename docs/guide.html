@@ -34,9 +34,56 @@
     .subtitle {
       text-align: center;
       color: var(--muted);
-      margin-bottom: 50px;
+      margin-bottom: 40px;
       font-size: 1.1rem;
     }
+    /* Tabs */
+    .tabs-container {
+      display: flex;
+      flex-direction: column;
+    }
+    .tabs-header {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      background: var(--card-bg);
+      padding: 5px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .tab-button {
+      flex: 1;
+      text-align: center;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--muted);
+      transition: all 0.2s ease;
+    }
+    .tab-button.active {
+      background: var(--bg);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+    }
+    .tab-button:hover:not(.active) {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Steps */
     .step {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -78,6 +125,9 @@
       display: block;
       margin: 0 auto 15px auto;
     }
+    .img-mobile {
+      max-width: 320px; /* Constrain mobile screenshots */
+    }
     .img-caption {
       text-align: center;
       color: var(--muted);
@@ -91,73 +141,136 @@
       border-radius: 4px;
       margin-top: 20px;
     }
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
   </style>
 </head>
 <body>
 
   <h1>KuCoin Bot Guide</h1>
-  <div class="subtitle">How to configure a Spot Grid bot on KuCoin Web and sync it to the Dashboard</div>
+  <div class="subtitle">How to configure a Spot Grid bot and sync it to the Dashboard</div>
 
-  <div class="step">
-    <h2><span class="step-number">1</span> Open Trading Bots</h2>
-    <p>Log into your KuCoin account on your desktop browser. From the top navigation menu, hover over the <strong>Trade</strong> menu and select <strong>Trading Bot</strong>.</p>
-    <img src="1.png" alt="KuCoin Trade Menu">
-    <div class="img-caption">Hover over Trade and click Trading Bot.</div>
+  <div class="tabs-container">
+    <div class="tabs-header">
+      <div class="tab-button active" onclick="openTab('web')">💻 KuCoin Web</div>
+      <div class="tab-button" onclick="openTab('mobile')">📱 KuCoin Mobile App</div>
+    </div>
+
+    <!-- WEB TAB -->
+    <div id="web" class="tab-content active">
+      <div class="step">
+        <h2><span class="step-number">1</span> Open Trading Bots</h2>
+        <p>Log into your KuCoin account on your desktop browser. From the top navigation menu, hover over the <strong>Trade</strong> menu and select <strong>Trading Bot</strong>.</p>
+        <img src="1.png" alt="KuCoin Trade Menu">
+        <div class="img-caption">Hover over Trade and click Trading Bot.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">2</span> Select Spot Grid</h2>
+        <p>On the trading terminal, look at the right-side panel under the <strong>Bot</strong> tab. Select <strong>Spot Grid</strong> to begin configuring your bot.</p>
+        <img src="2.png" alt="Spot Grid Selection">
+        <div class="img-caption">Choose Spot Grid for volatile markets.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">3</span> Enter Custom Parameters</h2>
+        <p>Switch to the <strong>Custom</strong> tab. Here, you will configure the bot according to your chosen EQTY/USDT Strategy (A, B, C, D, or E).</p>
+        <ul>
+          <li><strong>Low / High:</strong> Enter the bottom and top boundaries of your price range.</li>
+          <li><strong>No. of Grids:</strong> Enter the number of grids for your strategy.</li>
+          <li><strong>Total Investment:</strong> Enter the amount of USDT you want to allocate.</li>
+        </ul>
+        <p>Click the <strong>Create</strong> button to launch your bot.</p>
+        <img src="3.png" alt="Bot Parameters">
+        <div class="img-caption">Fill in the Low, High, Grids, and Investment fields.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">4</span> View Your Running Bot</h2>
+        <p>Once your bot is created, scroll down below the chart to the <strong>Trading Algorithm</strong> panel. Click the <strong>Running Bots</strong> tab to view your active bot.</p>
+        <img src="4.png" alt="Running Bots Tab">
+        <div class="img-caption">Your bot will appear in the Trading Algorithm list.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">5</span> Copy Bot Data</h2>
+        <p>To sync this bot with the community dashboard, you need to copy its data. Click and drag your mouse cursor over the <strong>entire row</strong> of your running bot to highlight all the text, then press <code>Ctrl+C</code> (or <code>Cmd+C</code> on Mac) to copy it.</p>
+        <div class="note"><strong>Important:</strong> Make sure you highlight from the pair name (e.g., EQTY/USDT) all the way across to the APR percentage on the far right.</div>
+        <img src="5.png" alt="Copying Bot Text">
+        <div class="img-caption">Highlight the entire horizontal row and copy it.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">6</span> Paste into the Dashboard</h2>
+        <p>Open the EQTY Grid Monitor dashboard and click the <strong>Add Bot</strong> button. In the modal that appears:</p>
+        <ul>
+          <li>Type your handle (e.g., <code>@zolnode</code>).</li>
+          <li>Click inside the <strong>KuCoin bot snapshot</strong> text box and press <code>Ctrl+V</code> (or <code>Cmd+V</code>) to paste the text you copied.</li>
+        </ul>
+        <p>The dashboard's smart parser will instantly format the text vertically and extract all your metrics automatically.</p>
+        <img src="6.png" alt="Pasting into Dashboard">
+        <div class="img-caption">Paste the text. It will format vertically and be ready to submit.</div>
+      </div>
+    </div>
+
+    <!-- MOBILE TAB -->
+    <div id="mobile" class="tab-content">
+      <div class="step">
+        <h2><span class="step-number">1</span> Open Trading Bots</h2>
+        <p>Launch the KuCoin app on your phone. From the home screen, tap the <strong>Trading Bot</strong> icon in the main menu grid.</p>
+        <img src="m1.jpg" alt="KuCoin Home Screen" class="img-mobile">
+        <div class="img-caption">Tap the Trading Bot icon on the home screen.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">2</span> Select Spot Grid</h2>
+        <p>In the Trading Bot menu, you will see a list of popular bots. Tap on <strong>Spot Grid</strong> to start creating your bot.</p>
+        <img src="m2.jpg" alt="Trading Bot Menu" class="img-mobile">
+        <div class="img-caption">Select Spot Grid at the top or in the list.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">3</span> Enter Custom Parameters</h2>
+        <p>On the Spot Grid configuration screen, select the <strong>Custom</strong> tab instead of Auto. Enter the parameters according to your chosen strategy (A, B, C, D, or E).</p>
+        <ul>
+          <li><strong>Price Range:</strong> Enter the bottom and top bounds.</li>
+          <li><strong>No. of Grids:</strong> Set your total grid count.</li>
+          <li><strong>Investment:</strong> Enter the amount of USDT to use.</li>
+        </ul>
+        <p>Tap the <strong>Create</strong> button at the bottom of the screen.</p>
+        <img src="m4.jpg" alt="Spot Grid Parameters" class="img-mobile">
+        <div class="img-caption">Fill in the Price Range, Grids, and Investment fields under the Custom tab.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">4</span> View Running Bots</h2>
+        <p>Once created, navigate to the <strong>Running Bots</strong> tab. Tap on your active EQTY/USDT bot to see its detailed performance, including your Grid Profit, Total Profit, and Break-Even point.</p>
+        <img src="m5.jpg" alt="Running Bots List" class="img-mobile">
+        <div class="img-caption">Tap your running bot to view its full details.</div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">5</span> Take a Screenshot & Upload</h2>
+        <p>To sync your bot to the dashboard, simply <strong>take a screenshot</strong> of the running bot details screen (the same screen shown in Step 4).</p>
+        <p>Then, open the EQTY Grid Monitor dashboard, click <strong>Add Bot</strong>, type your handle, and click the <strong>Upload mobile screenshot</strong> button. The dashboard will automatically read the screenshot and extract your stats!</p>
+        <div class="note"><strong>Tip:</strong> Make sure the entire bot card is visible in your screenshot, especially the numbers!</div>
+      </div>
+    </div>
+
   </div>
 
-  <div class="step">
-    <h2><span class="step-number">2</span> Select Spot Grid</h2>
-    <p>On the trading terminal, look at the right-side panel under the <strong>Bot</strong> tab. Select <strong>Spot Grid</strong> to begin configuring your bot.</p>
-    <img src="2.png" alt="Spot Grid Selection">
-    <div class="img-caption">Choose Spot Grid for volatile markets.</div>
-  </div>
-
-  <div class="step">
-    <h2><span class="step-number">3</span> Enter Custom Parameters</h2>
-    <p>Switch to the <strong>Custom</strong> tab. Here, you will configure the bot according to your chosen EQTY/USDT Strategy (A, B, C, D, or E).</p>
-    <ul>
-      <li><strong>Low / High:</strong> Enter the bottom and top boundaries of your price range.</li>
-      <li><strong>No. of Grids:</strong> Enter the number of grids for your strategy.</li>
-      <li><strong>Total Investment:</strong> Enter the amount of USDT you want to allocate.</li>
-    </ul>
-    <p>Click the <strong>Create</strong> button to launch your bot.</p>
-    <img src="3.png" alt="Bot Parameters">
-    <div class="img-caption">Fill in the Low, High, Grids, and Investment fields.</div>
-  </div>
-
-  <div class="step">
-    <h2><span class="step-number">4</span> View Your Running Bot</h2>
-    <p>Once your bot is created, scroll down below the chart to the <strong>Trading Algorithm</strong> panel. Click the <strong>Running Bots</strong> tab to view your active bot.</p>
-    <img src="4.png" alt="Running Bots Tab">
-    <div class="img-caption">Your bot will appear in the Trading Algorithm list.</div>
-  </div>
-
-  <div class="step">
-    <h2><span class="step-number">5</span> Copy Bot Data</h2>
-    <p>To sync this bot with the community dashboard, you need to copy its data. Click and drag your mouse cursor over the <strong>entire row</strong> of your running bot to highlight all the text, then press <code>Ctrl+C</code> (or <code>Cmd+C</code> on Mac) to copy it.</p>
-    <div class="note"><strong>Important:</strong> Make sure you highlight from the pair name (e.g., EQTY/USDT) all the way across to the APR percentage on the far right.</div>
-    <img src="5.png" alt="Copying Bot Text">
-    <div class="img-caption">Highlight the entire horizontal row and copy it.</div>
-  </div>
-
-  <div class="step">
-    <h2><span class="step-number">6</span> Paste into the Dashboard</h2>
-    <p>Open the EQTY Grid Monitor dashboard and click the <strong>Add Bot</strong> button. In the modal that appears:</p>
-    <ul>
-      <li>Type your handle (e.g., <code>@zolnode</code>).</li>
-      <li>Click inside the <strong>KuCoin bot snapshot</strong> text box and press <code>Ctrl+V</code> (or <code>Cmd+V</code>) to paste the text you copied.</li>
-    </ul>
-    <p>The dashboard's smart parser will instantly format the text vertically and extract all your metrics automatically.</p>
-    <img src="6.png" alt="Pasting into Dashboard">
-    <div class="img-caption">Paste the text. It will format vertically and be ready to submit.</div>
-  </div>
-
+  <script>
+    function openTab(tabId) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(el => {
+        el.classList.remove('active');
+      });
+      // Deactivate all buttons
+      document.querySelectorAll('.tab-button').forEach(el => {
+        el.classList.remove('active');
+      });
+      // Activate clicked tab
+      document.getElementById(tabId).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+  </script>
 </body>
 </html>
