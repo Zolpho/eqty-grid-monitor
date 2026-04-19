@@ -85,19 +85,19 @@
       </div>
     </section>
 
-    <!-- API INFO -->
+<!-- API INFO -->
     <section class="panel info-panel">
       <h2 class="section-title">KuCoin API auto-sync</h2>
       <div class="info-grid">
         <div>
-          <p>Community members can optionally link their own KuCoin <strong>read-only API key</strong> when submitting a bot. The dashboard will automatically re-fetch their stats every 5 minutes using the KuCoin <code>GET /api/v2/grid/spot/bots</code> endpoint, removing the need for manual paste updates.</p>
+          <p>Community members can optionally link their own KuCoin <strong>read-only API key</strong> when submitting a bot. The dashboard will automatically re-fetch their stats every 5 minutes using the KuCoin <code>GET /api/v2/grid/spot/bots</code> endpoint, removing the need for manual paste updates.<br><br><em>* Please note: KuCoin does not yet publish a REST API for Grid Spot bots. This feature is currently disabled and will be turned on as soon as KuCoin officially supports it in their API.</em></p>
           <p>Only <strong>read-only</strong> keys are ever stored — no trading permissions required or accepted.</p>
         </div>
-        <div>
+        <div> 
           <h3>What auto-sync fetches</h3>
           <ul>
             <li>Current investment &amp; total profit</li>
-            <li>Grid profit vs unrealized PNL</li>
+            <li>Grid profit vs unrealized PNL</li> 
             <li>Arbitrage count (24h &amp; total)</li>
             <li>Bot status (running / stopped)</li>
             <li>Break-even &amp; APR</li>
@@ -106,7 +106,7 @@
         </div>
       </div>
     </section>
-
+    
     <footer class="site-footer">
       <span>EQTY Grid Monitor · Community liquidity dashboard</span>
       <span id="lastRefresh" class="helper"></span>
