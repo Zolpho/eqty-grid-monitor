@@ -79,41 +79,57 @@ Grid APR/APR
 +95.63%
 +78.84%`;
 
-// ── Parser ─────────────────────────────────────────────────────
-function parseBotText(raw) {
-  const text = raw.replace(/\u00a0/g, ' ').trim();
-  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
-  const j = lines.join('\n');
-  const n = s => { const v = Number(String(s ?? '').replace(/[^0-9+\-.]/g, '')); return isFinite(v) ? v : null; };
-  const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
-  const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
-  const investment     = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-  const totalProfit    = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-  const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
-  const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-  const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
-  const rangeBlock     = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-]\s*([0-9]*\.?[0-9]+)\s*\n\s*([0-9]+:[0-9]+)/i);
-  const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
-  const runtimeLine    = lines.find(l => /\d+d\s+\d+h/i.test(l) || /\d+h\s+\d+m/i.test(l)) || '—';
-  return {
-    pair: pairPrice?.[1] ?? 'EQTY/USDT',
-    snapshotPrice: n(pairPrice?.[2]),
-    runtime: runtimeLine,
-    arb24h: n(arbitrage?.[1]) ?? 0,
-    arbTotal: n(arbitrage?.[2]) ?? 0,
-    investment: n(investment?.[1]) ?? 0,
-    totalProfit: n(totalProfit?.[1]) ?? 0,
-    totalProfitPct: n(totalProfitPct?.[1]) ?? 0,
-    gridProfit: n(gpBlock?.[1]) ?? 0,
-    unrealized: n(gpBlock?.[2]) ?? 0,
-    breakEven: n(breakEven?.[1]) ?? 0,
-    rangeLow: n(rangeBlock?.[1]),
-    rangeHigh: n(rangeBlock?.[2]),
-    gridBalance: rangeBlock?.[3] ?? '—',
-    gridApr: n(aprBlock?.[1]) ?? 0,
-    apr: n(aprBlock?.[2]) ?? 0,
-  };
-}
+  // ── Parser ─────────────────────────────────────────────────────
+  function parseBotText(raw) {
+    const text = raw.replace(/\u00a0/g, ' ').trim();
+    const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    const j = lines.join('\n');
+    
+    // Safe numeric parser: treats missing/empty as null instead of 0
+    const n = s => { 
+      if (s == null) return null;
+      const str = String(s).replace(/[^0-9+\-.]/g, ''); 
+      if (!str) return null;
+      const v = Number(str);
+      return Number.isFinite(v) ? v : null; 
+    };
+    
+    const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
+    const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i) || j.match(/Arbitrage.*?(\d+)\/(\d+)/i);
+    const investment     = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i) || j.match(/Investment.*?([+\-]?[0-9]*\.?[0-9]+)/i);
+    const totalProfit    = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i) || j.match(/Total Profit.*?([+\-]?[0-9]*\.?[0-9]+)/i);
+    const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
+    const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
+    const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
+    const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
+    
+    // More tolerant runtime extractor that isolates only the time duration
+    const runtimeMatch   = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
+    const runtime        = runtimeMatch ? runtimeMatch[1] : '—';
+    
+    // Decoupled range and grid ratio parsing to handle KuCoin UI changes
+    const rangeValues    = j.match(/([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/);
+    const gridBalance    = j.match(/(\d+\s*:\s*\d+)/);
+
+    return {
+      pair: pairPrice?.[1] ?? 'EQTY/USDT',
+      snapshotPrice: n(pairPrice?.[2]),
+      runtime: runtime,
+      arb24h: n(arbitrage?.[1]) ?? 0,
+      arbTotal: n(arbitrage?.[2]) ?? 0,
+      investment: n(investment?.[1]) ?? 0,
+      totalProfit: n(totalProfit?.[1]) ?? 0,
+      totalProfitPct: n(totalProfitPct?.[1]) ?? 0,
+      gridProfit: n(gpBlock?.[1]) ?? 0,
+      unrealized: n(gpBlock?.[2]) ?? 0,
+      breakEven: n(breakEven?.[1]) ?? 0,
+      rangeLow: n(rangeValues?.[1]),
+      rangeHigh: n(rangeValues?.[2]),
+      gridBalance: gridBalance?.[1]?.replace(/\s+/g, '') ?? '—',
+      gridApr: n(aprBlock?.[1]) ?? 0,
+      apr: n(aprBlock?.[2]) ?? 0,
+    };
+  }
 
 // ── Range health ───────────────────────────────────────────────
 function rangeHealth(price, low, high) {
