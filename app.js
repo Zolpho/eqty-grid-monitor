@@ -306,17 +306,36 @@ async function submitPasteBot() {
   el.submitPaste.disabled = true;
   el.submitPaste.textContent = 'Saving…';
 
+  // --- Check for duplicates ---
+  const getGrids = (gb) => (gb || '').split(':').reduce((sum, v) => sum + (parseInt(v) || 0), 0);
+  const existing = state.bots.find(b => 
+    b.owner === owner && 
+    b.rangeLow === parsed.rangeLow && 
+    b.rangeHigh === parsed.rangeHigh && 
+    getGrids(b.gridBalance) === getGrids(parsed.gridBalance) &&
+    b.investment === parsed.investment
+  );
+  
+  if (existing) {
+    if (state.supabaseReady) {
+      try { await sb.remove('bots', existing.id); } 
+      catch(e) { console.warn('Failed to remove duplicate:', e); }
+    }
+    state.bots = state.bots.filter(b => b.id !== existing.id);
+  }
+  // ----------------------------
+
   const record = {
     owner, strategy, note, ...parsed,
     apiLinked: false,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(), 
     id: crypto.randomUUID(),
   };
-
+  
   if (state.supabaseReady) {
     try {
       const rows = await sb.insert('bots', {
-        owner, strategy, note,
+        owner, strategy, note, 
         pair: parsed.pair, snapshot_price: parsed.snapshotPrice,
         runtime: parsed.runtime, arb_24h: parsed.arb24h, arb_total: parsed.arbTotal,
         investment: parsed.investment, total_profit: parsed.totalProfit,
