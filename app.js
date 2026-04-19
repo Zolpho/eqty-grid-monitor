@@ -46,6 +46,10 @@ const el = {
   emptyAddBtn: $('emptyAddBtn'),
   ownerInput: $('ownerInput'), strategyInput: $('strategyInput'),
   botPasteInput: $('botPasteInput'), noteInput: $('noteInput'),
+
+  // 📷 OCR DOM REFS ADDED HERE
+  botImageInput: $('botImageInput'), ocrStatus: $('ocrStatus'),
+  
   submitPaste: $('submitPaste'), submitMsg: $('submitMsg'),
   loadSample: $('loadSample'),
   apiOwner: $('apiOwner'), apiKey: $('apiKey'),
@@ -555,6 +559,37 @@ el.themeToggle.addEventListener('click', () => {
   setTheme(next);
 });
 el.botPasteInput.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submitPasteBot(); });
+
+// ── Screenshot OCR Logic ─────────────────────────────────────────
+el.botImageInput?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  el.ocrStatus.textContent = 'Scanning image for text... please wait.';
+  el.submitPaste.disabled = true; // Prevent submission during scan
+
+  try {
+    // Run the image through Tesseract.js
+    const result = await Tesseract.recognize(file, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          el.ocrStatus.textContent = `Scanning: ${Math.round(m.progress * 100)}%`;
+        }
+      }
+    });
+
+    // Take the scanned text and dump it into your existing text area
+    el.botPasteInput.value = result.data.text;
+    
+    el.ocrStatus.textContent = 'Scan complete! You can now submit.';
+    el.submitPaste.disabled = false;
+    
+  } catch (err) {
+    console.error('OCR Error:', err);
+    el.ocrStatus.textContent = 'Failed to read image. Please paste text manually.';
+    el.submitPaste.disabled = false;
+  }
+});
 
 // ── Init ──────────────────────────────────────────────────────
 (async function init() {

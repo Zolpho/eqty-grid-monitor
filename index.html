@@ -126,9 +126,10 @@
           <button class="tab" role="tab" aria-selected="false" data-tab="api">API key sync</button>
         </div>
 
-        <!-- PASTE TAB -->
+                <!-- PASTE TAB -->
         <div class="tab-panel" id="tab-paste">
           <div class="field"><label for="ownerInput">Your handle / name</label><input id="ownerInput" type="text" placeholder="@you" autocomplete="nickname"></div>
+          
           <div class="field"><label for="strategyInput">Strategy</label>
             <select id="strategyInput">
               <option value="A">A – Starter (0.0023–0.0031, 8 grids)</option>
@@ -139,11 +140,22 @@
               <option value="Custom">Custom range</option>
             </select>
           </div>
-          <div class="field">
-            <label for="botPasteInput">KuCoin bot snapshot <span class="helper">(copy the full text from the KuCoin app)</span></label>
-            <textarea id="botPasteInput" rows="11" placeholder="Spot Grid&#10;EQTY/USDT0.002806&#10;6d 18h 20m&#10;24h/Total Arbitrage: 5/10 time(s)&#10;Investment(USDT)&#10;728.892428&#10;..."></textarea>
+
+          <!-- 📷 NEW SCREENSHOT UPLOAD FIELD -->
+          <div class="field" style="border: 1px dashed var(--color-border, #444); padding: 12px; border-radius: 6px; background: rgba(255,255,255,0.02);">
+            <label for="botImageInput" style="margin-bottom: 8px;">📷 Upload mobile screenshot (Auto-read)</label>
+            <input type="file" id="botImageInput" accept="image/png, image/jpeg, image/webp" style="width: 100%; font-size: 14px;" />
+            <div id="ocrStatus" style="font-size: 13px; color: var(--color-warning, #ffab00); margin-top: 6px;"></div>
           </div>
+          <!-- -------------------------------- -->
+
+          <div class="field">
+            <label for="botPasteInput">KuCoin bot snapshot <span class="helper">(or copy the full text from the KuCoin app)</span></label>
+            <textarea id="botPasteInput" rows="11" placeholder="Spot Grid&#10;EQTY/USDT0.002806&#10;6d 18h 20m&#10;24h/Total Arbitrage: 5/10 time(s)&#10;Investment(USDT)&#10;728.892428&#10;..."></textarea>
+          </div> 
+          
           <div class="field"><label for="noteInput">Note (optional)</label><input id="noteInput" type="text" placeholder="e.g. running since April 15 on spare capital"></div>
+          
           <div class="modal-foot">
             <button class="btn btn-ghost" id="loadSample">Load sample</button>
             <button class="btn btn-primary" id="submitPaste">Submit bot</button>
@@ -180,6 +192,7 @@
   </div>
 
   <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
