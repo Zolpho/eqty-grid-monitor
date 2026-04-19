@@ -343,6 +343,9 @@ function render() {
 
 // ── Remove bot ────────────────────────────────────────────────
 window.removeBot = async (id) => {
+  // Added this line to trigger the native confirmation popup
+  if (!confirm("Are you sure you want to permanently delete this bot?")) return;
+
   if (state.supabaseReady) {
     try { await sb.remove('bots', id); } catch (e) { console.warn('Remove failed:', e); }
   }
