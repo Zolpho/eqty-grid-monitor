@@ -151,7 +151,7 @@ Grid APR/APR
     
         let gridBalance = '—';
     // Split the text exactly at the APR value. Everything after it is the grid block.
-    const afterAprSplit = j.split(/APR[\s\S]*?(?:--|[+\-]?[0-9]*\.?[0-9]+%)/i);
+    const afterAprSplit = j.split(/APR[\s\S]*?(?:--|[+\-]?[0-9]*\.?[0-9]+%?)/i);
     
     if (afterAprSplit.length > 1) {
       // Grab all isolated digits in the leftover tail text
@@ -185,7 +185,7 @@ Grid APR/APR
       rangeHigh: parseNum(beRange?.[3]),
       gridBalance,
       gridApr: parseNum(gridUnreal?.[3]) ?? 0,
-      apr: totalApr?.[1] === '--' ? null : parseNum(totalApr?.[1]) ?? parseNum(gridUnreal?.[3]) ?? null,      
+      apr: (totalApr?.[1] === '--' || totalApr?.[1] == null) ? null : parseNum(totalApr?.[1]) ?? null,
     };
   }
 
@@ -208,7 +208,7 @@ function rangeHealth(price, low, high) {
 }
 
 // ── Helpers ────────────────────────────────────────────────────
-const fmt  = (n, d = 2) => isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+const fmt  = (n, d = 2) => (n != null && Number.isFinite(Number(n))) ? Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
 const fmtP = n => isFinite(n) ? n.toFixed(6) : '—';
 const esc  = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
 const currentPrice = () =>
