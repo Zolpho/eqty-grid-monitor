@@ -562,6 +562,18 @@ el.botPasteInput.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey)
     typeof SUPABASE_URL === 'string' && SUPABASE_URL.includes('supabase.co') &&
     typeof SUPABASE_ANON === 'string' && SUPABASE_ANON.length > 10
   );
+  
+  // --- Hide features for future use ---
+  // Hides the second tab (API key sync)
+  const apiTab = document.querySelectorAll('.tab')[1];
+  if (apiTab) apiTab.style.display = 'none';
+  
+  // Hides the Strategy dropdown's parent wrapper
+  if (el.strategyInput && el.strategyInput.parentElement) {
+    el.strategyInput.parentElement.style.display = 'none';
+  }
+  // ------------------------------------
+
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(prefersDark ? 'dark' : 'light');
   render();
