@@ -139,42 +139,41 @@ Grid APR/APR
     };
   }
 
-  // ── 2. Mobile OCR Parser (Horizontal/Messy Layout) ─────────────
   function parseMobileOCRText(raw) {
-    const text = raw.replace(/\u00a0/g, ' ').trim();
-    // Join with spaces so we can read across horizontal columns
-    const j = text.split(/\n+/).map(l => l.trim()).filter(Boolean).join(' ');
-    
-    // Group 1 matches Investment, Group 2 matches Total Profit, Group 3 matches Pct
-    const invProfit  = j.match(/Investment[\s\S]*?Total Profit[\s\S]*?([0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)%/i);
-    const gridUnreal = j.match(/Grid Profit[\s\S]*?Unrealized PNL[\s\S]*?Grid APR[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)%/i);
-    const beRange    = j.match(/Break-Even[\s\S]*?Price Range[\s\S]*?([0-9]+\.[0-9]+)[\s\S]*?([0-9]+\.[0-9]+)\s*[~\-–]\s*([0-9]+\.[0-9]+)/i);
-    
-    const gridMatch    = j.match(/\b(\d{1,4})\s*[: ]\s*(\d{1,4})\b(?!.*[a-z])/i);
-    const pairPrice    = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
-    const arbitrage    = j.match(/Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
-    const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
-    const totalApr     = j.match(/APR[\s\S]*?(?:--|([+\-]?[0-9]+\.[0-9]+)%)/i);
+  const text = raw.replace(/\u00a0/g, ' ').trim();
+  const j = text.split(/\n+/).map(l => l.trim()).filter(Boolean).join(' ');
+  
+  const invProfit  = j.match(/Investment[\s\S]*?Total Profit[\s\S]*?([0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)%/i);
+  const gridUnreal = j.match(/Grid Profit[\s\S]*?Unrealized PNL[\s\S]*?Grid APR[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)%/i);
+  const beRange    = j.match(/Break-Even[\s\S]*?Price Range[\s\S]*?([0-9]+\.[0-9]+)[\s\S]*?([0-9]+\.[0-9]+)\s*[~\-–]\s*([0-9]+\.[0-9]+)/i);
 
-    return {
-      pair: pairPrice?.[1] ?? 'EQTY/USDT',
-      snapshotPrice: parseNum(pairPrice?.[2]),
-      runtime: runtimeMatch ? runtimeMatch[1] : '—',
-      arb24h: parseNum(arbitrage?.[1]) ?? 0,
-      arbTotal: parseNum(arbitrage?.[2]) ?? 0,
-      investment: parseNum(invProfit?.[1]) ?? 0,
-      totalProfit: parseNum(invProfit?.[2]) ?? 0,
-      totalProfitPct: parseNum(invProfit?.[3]) ?? 0,
-      gridProfit: parseNum(gridUnreal?.[1]) ?? 0,
-      unrealized: parseNum(gridUnreal?.[2]) ?? 0,
-      breakEven: parseNum(beRange?.[1]) ?? 0,
-      rangeLow: parseNum(beRange?.[2]),
-      rangeHigh: parseNum(beRange?.[3]),
-      gridBalance: gridMatch ? `${gridMatch[1]}:${gridMatch[2]}` : '—',
-      gridApr: parseNum(gridUnreal?.[3]) ?? 0,
-      apr: parseNum(totalApr?.[1]) ?? parseNum(gridUnreal?.[3]) ?? 0,
-    };
-  }
+  const gridMatches = [...j.matchAll(/(?:^|[^\d.])(\d{1,4})\s*[: ]\s*(\d{1,4})(?:[^\d.]|$)/g)];
+  const gridMatch = gridMatches[gridMatches.length - 1];
+
+  const pairPrice    = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
+  const arbitrage    = j.match(/Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
+  const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
+  const totalApr     = j.match(/APR[\s\S]*?(?:--|([+\-]?[0-9]+\.[0-9]+)%)/i);
+
+  return {
+    pair: pairPrice?.[1] ?? 'EQTY/USDT',
+    snapshotPrice: parseNum(pairPrice?.[2]),
+    runtime: runtimeMatch ? runtimeMatch[1] : '—',
+    arb24h: parseNum(arbitrage?.[1]) ?? 0,
+    arbTotal: parseNum(arbitrage?.[2]) ?? 0,
+    investment: parseNum(invProfit?.[1]) ?? 0,
+    totalProfit: parseNum(invProfit?.[2]) ?? 0,
+    totalProfitPct: parseNum(invProfit?.[3]) ?? 0,
+    gridProfit: parseNum(gridUnreal?.[1]) ?? 0,
+    unrealized: parseNum(gridUnreal?.[2]) ?? 0,
+    breakEven: parseNum(beRange?.[1]) ?? 0,
+    rangeLow: parseNum(beRange?.[2]),
+    rangeHigh: parseNum(beRange?.[3]),
+    gridBalance: gridMatch ? `${gridMatch[1]}:${gridMatch[2]}` : '—',
+    gridApr: parseNum(gridUnreal?.[3]) ?? 0,
+    apr: parseNum(totalApr?.[1]) ?? parseNum(gridUnreal?.[3]) ?? 0,
+  };
+}
 
 // ── Range health ───────────────────────────────────────────────
 function rangeHealth(price, low, high) {
