@@ -6,7 +6,10 @@ A community-shared, Supabase-backed dashboard for monitoring KuCoin Spot Grid bo
 
 ## Features
 
-- **Paste or API-sync** bot snapshots
+- **Paste, API-sync, or Image Upload** bot snapshots:
+  - Copy-paste text directly from KuCoin Web
+  - Upload mobile app screenshots (powered by local, in-browser Tesseract OCR)
+  - Connect read-only API keys for 5-minute auto-sync
 - Live EQTY/USDT price from KuCoin public ticker (auto-refreshes every 30s)
 - Per-bot range health alerts (healthy / near edge / out of range)
 - KPI summary: total bots, capital, P&L, average APR, active alerts
@@ -164,4 +167,4 @@ The Edge Function source is in `supabase/functions/sync-kucoin-bot/index.ts`.
 
 ## Local dev
 
-Just open `index.html` in a browser. No build step required.
+Just open `index.html` in a browser. No build step required. The OCR processing runs entirely inside the browser using Tesseract.js.
