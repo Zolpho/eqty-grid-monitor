@@ -149,17 +149,18 @@ Grid APR/APR
     const gridUnreal = j.match(/Grid Profit[\s\S]*?Unrealized PNL[\s\S]*?Grid APR[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%/i);
     const beRange    = j.match(/Break-Even[\s\S]*?Price Range[\s\S]*?([0-9]*\.?[0-9]+)[\s\S]*?([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
     
-    const gridMatches = [...j.matchAll(/(?:^|[^\d.])(\d{1,4})\s*[: ]\s*(\d{1,4})(?:[^\d.]|$)/g)];
-    let gridBalance = '—';
-
-    if (gridMatches.length) {
-      const last = gridMatches[gridMatches.length - 1];
-      gridBalance = `${last[1]}:${last[2]}`;
-    } else {
-      // Fallback: If OCR merges the boxes into "37" or "64"
-      const compactGrid = j.match(/APR[\s\S]*?(?:--|[+\-]?[0-9]*\.?[0-9]+%)\s*(\d{2})\s*$/i);
-      if (compactGrid) {
-        gridBalance = `${compactGrid[1][0]}:${compactGrid[1][1]}`;
+        let gridBalance = '—';
+    // Split the text exactly at the APR value. Everything after it is the grid block.
+    const afterAprSplit = j.split(/APR[\s\S]*?(?:--|[+\-]?[0-9]*\.?[0-9]+%)/i);
+    
+    if (afterAprSplit.length > 1) {
+      // Grab all isolated digits in the leftover tail text
+      const tailText = afterAprSplit.pop();
+      const tailDigits = tailText.match(/\d/g);
+      
+      if (tailDigits && tailDigits.length >= 2) {
+        // Build the ratio from the last two digits OCR saw
+        gridBalance = `${tailDigits[tailDigits.length - 2]}:${tailDigits[tailDigits.length - 1]}`;
       }
     }
 
@@ -184,7 +185,7 @@ Grid APR/APR
       rangeHigh: parseNum(beRange?.[3]),
       gridBalance,
       gridApr: parseNum(gridUnreal?.[3]) ?? 0,
-      apr: totalApr?.[1] === '--' ? 0 : parseNum(totalApr?.[1]) ?? parseNum(gridUnreal?.[3]) ?? 0,
+      apr: totalApr?.[1] === '--' ? null : parseNum(totalApr?.[1]) ?? parseNum(gridUnreal?.[3]) ?? null,      
     };
   }
 
