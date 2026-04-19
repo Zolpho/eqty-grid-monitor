@@ -84,7 +84,6 @@ Grid APR/APR
 +78.84%`;
 
   // ── Parser Helper ──────────────────────────────────────────────
-  // Safe numeric parser: treats missing/empty as null instead of 0
   const parseNum = s => { 
     if (s == null) return null;
     const str = String(s).replace(/[^0-9+\-.]/g, ''); 
@@ -95,13 +94,9 @@ Grid APR/APR
 
   // ── Master Parser (Router) ─────────────────────────────────────
   function parseBotText(raw) {
-    // If it contains Web-specific formatting with parentheses, use the strict Web parser
     if (raw.includes('Investment(USDT)') || raw.includes('Grid Profit/Unrealized PNL')) {
-      console.log("Parsing as KuCoin Web format...");
       return parseWebBotText(raw);
     } else {
-      // Otherwise, assume it's OCR from the Mobile App
-      console.log("Parsing as KuCoin Mobile OCR format...");
       return parseMobileOCRText(raw);
     }
   }
@@ -147,30 +142,19 @@ Grid APR/APR
   // ── 2. Mobile OCR Parser (Horizontal/Messy Layout) ─────────────
   function parseMobileOCRText(raw) {
     const text = raw.replace(/\u00a0/g, ' ').trim();
-    // Join with spaces instead of newlines so we can read across columns
+    // Join with spaces so we can read across horizontal columns
     const j = text.split(/\n+/).map(l => l.trim()).filter(Boolean).join(' ');
     
-    // Extracting fields using flexible keyword + lookahead
-    const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
-    const arbitrage      = j.match(/Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
-    const runtimeMatch   = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
+    // Group 1 matches Investment, Group 2 matches Total Profit, Group 3 matches Pct
+    const invProfit  = j.match(/Investment[\s\S]*?Total Profit[\s\S]*?([0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)%/i);
+    const gridUnreal = j.match(/Grid Profit[\s\S]*?Unrealized PNL[\s\S]*?Grid APR[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)[\s\S]*?([+\-]?[0-9]+\.[0-9]+)%/i);
+    const beRange    = j.match(/Break-Even[\s\S]*?Price Range[\s\S]*?([0-9]+\.[0-9]+)[\s\S]*?([0-9]+\.[0-9]+)\s*[~\-–]\s*([0-9]+\.[0-9]+)/i);
     
-    // OCR reads left-to-right, so values are often separated by spaces
-    const investment     = j.match(/Investment\s*USDT[\s\S]*?([0-9]+\.?[0-9]+)/i);
-    const totalProfit    = j.match(/Total Profit\s*USDT[\s\S]*?([+\-]?[0-9]+\.?[0-9]+)/i);
-    const totalProfitPct = j.match(/([+\-]?[0-9]+\.?[0-9]+)%/i); // Grabs first percentage
-    
-    const gridProfit     = j.match(/Grid Profit[\s\S]*?([+\-]?[0-9]+\.?[0-9]+)/i);
-    const unrealized     = j.match(/Unrealized PNL[\s\S]*?([+\-]?[0-9]+\.?[0-9]+)/i);
-    const breakEven      = j.match(/Break-Even[\s\S]*?([0-9]+\.?[0-9]+)/i);
-    
-    const rangeValues    = j.match(/Price Range[\s\S]*?([0-9]+\.?[0-9]+)\s*[~\-–]\s*([0-9]+\.?[0-9]+)/i);
-    
-    // OCR often reads grid numbers as "6 4" or "6:4" near the end
-    const gridBalance    = j.match(/(\d+)\s*[: ]\s*(\d+)(?!\s*time)/);
-    
-    const gridApr        = j.match(/Grid APR[\s\S]*?([+\-]?[0-9]+\.?[0-9]+)%/i);
-    const totalApr       = j.match(/APR[\s\S]*?([+\-]?[0-9]+\.?[0-9]+)%/i);
+    const gridMatch    = j.match(/\b(\d{1,4})\s*[: ]\s*(\d{1,4})\b(?!.*[a-z])/i);
+    const pairPrice    = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
+    const arbitrage    = j.match(/Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
+    const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
+    const totalApr     = j.match(/APR[\s\S]*?(?:--|([+\-]?[0-9]+\.[0-9]+)%)/i);
 
     return {
       pair: pairPrice?.[1] ?? 'EQTY/USDT',
@@ -178,17 +162,17 @@ Grid APR/APR
       runtime: runtimeMatch ? runtimeMatch[1] : '—',
       arb24h: parseNum(arbitrage?.[1]) ?? 0,
       arbTotal: parseNum(arbitrage?.[2]) ?? 0,
-      investment: parseNum(investment?.[1]) ?? 0,
-      totalProfit: parseNum(totalProfit?.[1]) ?? 0,
-      totalProfitPct: parseNum(totalProfitPct?.[1]) ?? 0,
-      gridProfit: parseNum(gridProfit?.[1]) ?? 0,
-      unrealized: parseNum(unrealized?.[1]) ?? 0,
-      breakEven: parseNum(breakEven?.[1]) ?? 0,
-      rangeLow: parseNum(rangeValues?.[1]),
-      rangeHigh: parseNum(rangeValues?.[2]),
-      gridBalance: gridBalance ? `${gridBalance[1]}:${gridBalance[2]}` : '—',
-      gridApr: parseNum(gridApr?.[1]) ?? 0,
-      apr: parseNum(totalApr?.[1]) ?? parseNum(gridApr?.[1]) ?? 0,
+      investment: parseNum(invProfit?.[1]) ?? 0,
+      totalProfit: parseNum(invProfit?.[2]) ?? 0,
+      totalProfitPct: parseNum(invProfit?.[3]) ?? 0,
+      gridProfit: parseNum(gridUnreal?.[1]) ?? 0,
+      unrealized: parseNum(gridUnreal?.[2]) ?? 0,
+      breakEven: parseNum(beRange?.[1]) ?? 0,
+      rangeLow: parseNum(beRange?.[2]),
+      rangeHigh: parseNum(beRange?.[3]),
+      gridBalance: gridMatch ? `${gridMatch[1]}:${gridMatch[2]}` : '—',
+      gridApr: parseNum(gridUnreal?.[3]) ?? 0,
+      apr: parseNum(totalApr?.[1]) ?? parseNum(gridUnreal?.[3]) ?? 0,
     };
   }
 
