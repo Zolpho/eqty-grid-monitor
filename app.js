@@ -103,8 +103,9 @@ Grid APR/APR
     const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
     
     // Makes the second APR optional to handle single APR formats
-    const aprBlock       = j.match(/Grid APR.*?([+\-]?[0-9]*\.?[0-9]+)%(?:\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%)?/i);
-    
+    const aprBlock = j.match(
+  /Grid APR[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%(?:\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%)?/i
+); 
     // More tolerant runtime extractor that isolates only the time duration
     const runtimeMatch   = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
     const runtime        = runtimeMatch ? runtimeMatch[1] : '—';
@@ -135,7 +136,7 @@ Grid APR/APR
 
 // ── Range health ───────────────────────────────────────────────
 function rangeHealth(price, low, high) {
-  if (!isFinite(price) || !isFinite(low) || !isFinite(high))
+  if (!Number.isFinite(price) || !Number.isFinite(low) || !Number.isFinite(high))  
     return { label: 'No live price', cls: 'warn', detail: 'Enter price above to enable range checks.', urgency: 1, pct: null };
   if (price < low) {
     const d = ((low - price) / low * 100).toFixed(2);
@@ -155,7 +156,10 @@ function rangeHealth(price, low, high) {
 const fmt  = (n, d = 2) => isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
 const fmtP = n => isFinite(n) ? n.toFixed(6) : '—';
 const esc  = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
-const currentPrice = () => isFinite(state.manualPrice) ? state.manualPrice : state.livePrice;
+const currentPrice = () =>
+  Number.isFinite(state.manualPrice) ? state.manualPrice :
+  Number.isFinite(state.livePrice) ? state.livePrice :
+  null;
 
 // ── Render ─────────────────────────────────────────────────────
 function getVisible() {
@@ -200,7 +204,9 @@ function renderCards(bots) {
   el.cardsGrid.innerHTML = bots.map(b => {
     const h      = b.health;
     const pnlCls = b.totalProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
-    const buf    = isFinite(p) && b.breakEven > 0 ? ((p - b.breakEven) / b.breakEven * 100) : null;
+    const buf = Number.isFinite(p) && b.breakEven > 0
+  ? ((p - b.breakEven) / b.breakEven * 100)
+  : null;
     const barPct = h.pct != null ? Math.min(100, Math.max(0, h.pct)) : 50;
     const rw     = (isFinite(b.rangeHigh) && isFinite(b.rangeLow)) ? ((b.rangeHigh - b.rangeLow) / b.rangeLow * 100).toFixed(1) : '—';
     const apiTag = b.apiLinked ? `<span class="badge badge-api">API</span>` : '';
