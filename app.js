@@ -101,14 +101,16 @@ Grid APR/APR
     const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
     const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
     const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
-    const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
+    
+    // Makes the second APR optional to handle single APR formats
+    const aprBlock       = j.match(/Grid APR.*?([+\-]?[0-9]*\.?[0-9]+)%(?:\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%)?/i);
     
     // More tolerant runtime extractor that isolates only the time duration
     const runtimeMatch   = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
     const runtime        = runtimeMatch ? runtimeMatch[1] : '—';
     
-    // Decoupled range and grid ratio parsing to handle KuCoin UI changes
-    const rangeValues    = j.match(/([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/);
+    // Anchored to "Price Range" to prevent capturing a positive profit followed by a negative PNL
+    const rangeValues    = j.match(/Price Range.*?\n\s*([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
     const gridBalance    = j.match(/(\d+\s*:\s*\d+)/);
 
     return {
@@ -127,7 +129,7 @@ Grid APR/APR
       rangeHigh: n(rangeValues?.[2]),
       gridBalance: gridBalance?.[1]?.replace(/\s+/g, '') ?? '—',
       gridApr: n(aprBlock?.[1]) ?? 0,
-      apr: n(aprBlock?.[2]) ?? 0,
+      apr: n(aprBlock?.[2]) ?? n(aprBlock?.[1]) ?? 0,
     };
   }
 
