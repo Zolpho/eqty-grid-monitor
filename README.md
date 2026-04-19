@@ -2,6 +2,8 @@
 
 A community-shared, Supabase-backed dashboard for monitoring KuCoin Spot Grid bots on the EQTY/USDT pair.
 
+<img src="docs/dashboard.png" width="600" alt="Dashboard Preview">
+
 ---
 
 ## Features
