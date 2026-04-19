@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Configure & Sync KuCoin Bots</title>
+  <style>
+    :root {
+      --bg: #111114;
+      --card-bg: #1c1c21;
+      --text: #e2e2e9;
+      --muted: #8b8b9d;
+      --accent: #22c55e;
+      --border: #2e2e38;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    h1, h2, h3 {
+      font-weight: 600;
+      color: #fff;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 50px;
+      font-size: 1.1rem;
+    }
+    .step {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+    .step-number {
+      display: inline-block;
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+      text-align: center;
+      border-radius: 50%;
+      margin-right: 12px;
+    }
+    .step h2 {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      font-size: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    p {
+      margin-bottom: 20px;
+      font-size: 1.05rem;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      display: block;
+      margin: 0 auto 15px auto;
+    }
+    .img-caption {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 30px;
+    }
+    .note {
+      background: rgba(34, 197, 94, 0.1);
+      border-left: 4px solid var(--accent);
+      padding: 15px 20px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>KuCoin Bot Guide</h1>
+  <div class="subtitle">How to configure a Spot Grid bot on KuCoin Web and sync it to the Dashboard</div>
+
+  <div class="step">
+    <h2><span class="step-number">1</span> Open Trading Bots</h2>
+    <p>Log into your KuCoin account on your desktop browser. From the top navigation menu, hover over the <strong>Trade</strong> menu and select <strong>Trading Bot</strong>.</p>
+    <img src="1.jpg" alt="KuCoin Trade Menu">
+    <div class="img-caption">Hover over Trade and click Trading Bot.</div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-number">2</span> Select Spot Grid</h2>
+    <p>On the trading terminal, look at the right-side panel under the <strong>Bot</strong> tab. Select <strong>Spot Grid</strong> to begin configuring your bot.</p>
+    <img src="2.jpg" alt="Spot Grid Selection">
+    <div class="img-caption">Choose Spot Grid for volatile markets.</div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-number">3</span> Enter Custom Parameters</h2>
+    <p>Switch to the <strong>Custom</strong> tab. Here, you will configure the bot according to your chosen EQTY/USDT Strategy (A, B, C, D, or E).</p>
+    <ul>
+      <li><strong>Low / High:</strong> Enter the bottom and top boundaries of your price range.</li>
+      <li><strong>No. of Grids:</strong> Enter the number of grids for your strategy.</li>
+      <li><strong>Total Investment:</strong> Enter the amount of USDT you want to allocate.</li>
+    </ul>
+    <p>Click the <strong>Create</strong> button to launch your bot.</p>
+    <img src="3.jpg" alt="Bot Parameters">
+    <div class="img-caption">Fill in the Low, High, Grids, and Investment fields.</div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-number">4</span> View Your Running Bot</h2>
+    <p>Once your bot is created, scroll down below the chart to the <strong>Trading Algorithm</strong> panel. Click the <strong>Running Bots</strong> tab to view your active bot.</p>
+    <img src="4.jpg" alt="Running Bots Tab">
+    <div class="img-caption">Your bot will appear in the Trading Algorithm list.</div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-number">5</span> Copy Bot Data</h2>
+    <p>To sync this bot with the community dashboard, you need to copy its data. Click and drag your mouse cursor over the <strong>entire row</strong> of your running bot to highlight all the text, then press <code>Ctrl+C</code> (or <code>Cmd+C</code> on Mac) to copy it.</p>
+    <div class="note"><strong>Important:</strong> Make sure you highlight from the pair name (e.g., EQTY/USDT) all the way across to the APR percentage on the far right.</div>
+    <img src="5.jpg" alt="Copying Bot Text">
+    <div class="img-caption">Highlight the entire horizontal row and copy it.</div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-number">6</span> Paste into the Dashboard</h2>
+    <p>Open the EQTY Grid Monitor dashboard and click the <strong>Add Bot</strong> button. In the modal that appears:</p>
+    <ul>
+      <li>Type your handle (e.g., <code>@zolnode</code>).</li>
+      <li>Click inside the <strong>KuCoin bot snapshot</strong> text box and press <code>Ctrl+V</code> (or <code>Cmd+V</code>) to paste the text you copied.</li>
+    </ul>
+    <p>The dashboard's smart parser will instantly format the text vertically and extract all your metrics automatically.</p>
+    <img src="6.jpg" alt="Pasting into Dashboard">
+    <div class="img-caption">Paste the text. It will format vertically and be ready to submit.</div>
+  </div>
+
+</body>
+</html>
