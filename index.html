@@ -95,6 +95,9 @@
         <div>
           <p>Community members can optionally link their own KuCoin <strong>read-only API key</strong> when submitting a bot. The dashboard will automatically re-fetch their stats every 5 minutes using the KuCoin <code>GET /api/v2/grid/spot/bots</code> endpoint, removing the need for manual paste updates.<br><br><em>* Please note: KuCoin does not yet publish a REST API for Grid Spot bots. This feature is currently disabled and will be turned on as soon as KuCoin officially supports it in their API.</em></p>
           <p>Only <strong>read-only</strong> keys are ever stored — no trading permissions required or accepted.</p>
+                    <br>
+          <h3>What is Buffer vs BE?</h3>
+          <p>This computed metric tells you how far the live EQTY price can drop before your bot starts losing money. <br><br>• A <strong>+5.00%</strong> buffer means you can sustain a 5% market drop and still be in profit.<br>• A <strong>-2.00%</strong> buffer means your bot is underwater, and the token needs to pump 2% just for you to break even.</p>
         </div>
         <div> 
           <h3>What auto-sync fetches</h3>
