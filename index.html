@@ -129,14 +129,14 @@
       <div class="modal-body">
         <div class="tabs" role="tablist">
           <button class="tab active" role="tab" aria-selected="true" data-tab="paste">Paste snapshot</button>
-          <button class="tab" role="tab" aria-selected="false" data-tab="api">API key sync</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="api" hidden>API key sync</button>
         </div>
 
                 <!-- PASTE TAB -->
         <div class="tab-panel" id="tab-paste">
           <div class="field"><label for="ownerInput">Your handle / name</label><input id="ownerInput" type="text" placeholder="@you" autocomplete="nickname"></div>
           
-          <div class="field"><label for="strategyInput">Strategy</label>
+          <div class="field" hidden><label for="strategyInput">Strategy</label>
             <select id="strategyInput">
               <option value="A">A – Starter (0.0023–0.0031, 8 grids)</option>
               <option value="B">B – Core (0.0022–0.0032, 10 grids)</option>
