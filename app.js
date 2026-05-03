@@ -46,10 +46,6 @@ const el = {
   emptyAddBtn: $('emptyAddBtn'),
   ownerInput: $('ownerInput'), strategyInput: $('strategyInput'),
   botPasteInput: $('botPasteInput'), noteInput: $('noteInput'),
-
-  // 📷 OCR DOM REFS ADDED HERE
-  botImageInput: $('botImageInput'), ocrStatus: $('ocrStatus'),
-  
   submitPaste: $('submitPaste'), submitMsg: $('submitMsg'),
   loadSample: $('loadSample'),
   apiOwner: $('apiOwner'), apiKey: $('apiKey'),
@@ -83,115 +79,45 @@ Grid APR/APR
 +95.63%
 +78.84%`;
 
-  // ── Parser Helper ──────────────────────────────────────────────
-  const parseNum = s => { 
-    if (s == null) return null;
-    const str = String(s).replace(/[^0-9+\-.]/g, ''); 
-    if (!str) return null;
-    const v = Number(str);
-    return Number.isFinite(v) ? v : null; 
+// ── Parser ─────────────────────────────────────────────────────
+function parseBotText(raw) {
+  const text = raw.replace(/\u00a0/g, ' ').trim();
+  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const j = lines.join('\n');
+  const n = s => { const v = Number(String(s ?? '').replace(/[^0-9+\-.]/g, '')); return isFinite(v) ? v : null; };
+  const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
+  const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
+  const investment     = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
+  const totalProfit    = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
+  const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
+  const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
+  const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
+  const rangeBlock     = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-]\s*([0-9]*\.?[0-9]+)\s*\n\s*([0-9]+:[0-9]+)/i);
+  const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
+  const runtimeLine    = lines.find(l => /\d+d\s+\d+h/i.test(l) || /\d+h\s+\d+m/i.test(l)) || '—';
+  return {
+    pair: pairPrice?.[1] ?? 'EQTY/USDT',
+    snapshotPrice: n(pairPrice?.[2]),
+    runtime: runtimeLine,
+    arb24h: n(arbitrage?.[1]) ?? 0,
+    arbTotal: n(arbitrage?.[2]) ?? 0,
+    investment: n(investment?.[1]) ?? 0,
+    totalProfit: n(totalProfit?.[1]) ?? 0,
+    totalProfitPct: n(totalProfitPct?.[1]) ?? 0,
+    gridProfit: n(gpBlock?.[1]) ?? 0,
+    unrealized: n(gpBlock?.[2]) ?? 0,
+    breakEven: n(breakEven?.[1]) ?? 0,
+    rangeLow: n(rangeBlock?.[1]),
+    rangeHigh: n(rangeBlock?.[2]),
+    gridBalance: rangeBlock?.[3] ?? '—',
+    gridApr: n(aprBlock?.[1]) ?? 0,
+    apr: n(aprBlock?.[2]) ?? 0,
   };
-
-  // ── Master Parser (Router) ─────────────────────────────────────
-  function parseBotText(raw) {
-    if (raw.includes('Investment(USDT)') || raw.includes('Grid Profit/Unrealized PNL')) {
-      return parseWebBotText(raw);
-    } else {
-      return parseMobileOCRText(raw);
-    }
-  }
-
-  // ── 1. Web Parser (Strict Vertical Layout) ─────────────────────
-  function parseWebBotText(raw) {
-    const text = raw.replace(/\u00a0/g, ' ').trim();
-    const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
-    const j = lines.join('\n');
-    
-    const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
-    const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
-    const investment     = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-    const totalProfit    = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-    const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
-    const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
-    const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
-    const aprBlock       = j.match(/Grid APR[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%(?:\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%)?/i);
-    const runtimeMatch   = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
-    const rangeValues    = j.match(/Price Range.*?\n\s*([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
-    const gridBalance    = j.match(/(\d+\s*:\s*\d+)/);
-
-    return {
-      pair: pairPrice?.[1] ?? 'EQTY/USDT',
-      snapshotPrice: parseNum(pairPrice?.[2]),
-      runtime: runtimeMatch ? runtimeMatch[1] : '—',
-      arb24h: parseNum(arbitrage?.[1]) ?? 0,
-      arbTotal: parseNum(arbitrage?.[2]) ?? 0,
-      investment: parseNum(investment?.[1]) ?? 0,
-      totalProfit: parseNum(totalProfit?.[1]) ?? 0,
-      totalProfitPct: parseNum(totalProfitPct?.[1]) ?? 0,
-      gridProfit: parseNum(gpBlock?.[1]) ?? 0,
-      unrealized: parseNum(gpBlock?.[2]) ?? 0,
-      breakEven: parseNum(breakEven?.[1]) ?? 0,
-      rangeLow: parseNum(rangeValues?.[1]),
-      rangeHigh: parseNum(rangeValues?.[2]),
-      gridBalance: gridBalance?.[1]?.replace(/\s+/g, '') ?? '—',
-      gridApr: parseNum(aprBlock?.[1]) ?? 0,
-      apr: parseNum(aprBlock?.[2]) ?? parseNum(aprBlock?.[1]) ?? 0,
-    };
-  }
-
-  // ── 2. Mobile OCR Parser (Horizontal/Messy Layout) ─────────────
-  function parseMobileOCRText(raw) {
-    const text = raw.replace(/\u00a0/g, ' ').trim();
-    const j = text.split(/\n+/).map(l => l.trim()).filter(Boolean).join(' ');
-    
-    // Using \.? makes the decimal point optional so it catches exact integers like "835"
-    const invProfit  = j.match(/Investment[\s\S]*?Total Profit[\s\S]*?([0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%/i);
-    const gridUnreal = j.match(/Grid Profit[\s\S]*?Unrealized PNL[\s\S]*?Grid APR[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%/i);
-    const beRange    = j.match(/Break-Even[\s\S]*?Price Range[\s\S]*?([0-9]*\.?[0-9]+)[\s\S]*?([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
-    
-        let gridBalance = '—';
-    // Split the text exactly at the APR value. Everything after it is the grid block.
-    const afterAprSplit = j.split(/APR[\s\S]*?(?:--|[+\-]?[0-9]*\.?[0-9]+%?)/i);
-    
-    if (afterAprSplit.length > 1) {
-      // Grab all isolated digits in the leftover tail text
-      const tailText = afterAprSplit.pop();
-      const tailDigits = tailText.match(/\d/g);
-      
-      if (tailDigits && tailDigits.length >= 2) {
-        // Build the ratio from the last two digits OCR saw
-        gridBalance = `${tailDigits[tailDigits.length - 2]}:${tailDigits[tailDigits.length - 1]}`;
-      }
-    }
-
-    const pairPrice    = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
-    const arbitrage    = j.match(/Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
-    const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
-    const totalApr     = j.match(/Price Range[\s\S]*?APR[\s\S]*?(--|[+\-]?[0-9]*\.?[0-9]+%)/i);
-
-    return {
-      pair: pairPrice?.[1] ?? 'EQTY/USDT',
-      snapshotPrice: parseNum(pairPrice?.[2]),
-      runtime: runtimeMatch ? runtimeMatch[1] : '—',
-      arb24h: parseNum(arbitrage?.[1]) ?? 0,
-      arbTotal: parseNum(arbitrage?.[2]) ?? 0,
-      investment: parseNum(invProfit?.[1]) ?? 0,
-      totalProfit: parseNum(invProfit?.[2]) ?? 0,
-      totalProfitPct: parseNum(invProfit?.[3]) ?? 0,
-      gridProfit: parseNum(gridUnreal?.[1]) ?? 0,
-      unrealized: parseNum(gridUnreal?.[2]) ?? 0,
-      breakEven: parseNum(beRange?.[1]) ?? 0,
-      rangeLow: parseNum(beRange?.[2]),
-      rangeHigh: parseNum(beRange?.[3]),
-      gridBalance,
-      gridApr: parseNum(gridUnreal?.[3]) ?? 0,
-      apr: (totalApr?.[1] === '--' || totalApr?.[1] == null) ? null : parseNum(totalApr?.[1]) ?? null,
-    };
-  }
+}
 
 // ── Range health ───────────────────────────────────────────────
 function rangeHealth(price, low, high) {
-  if (!Number.isFinite(price) || !Number.isFinite(low) || !Number.isFinite(high))  
+  if (!isFinite(price) || !isFinite(low) || !isFinite(high))
     return { label: 'No live price', cls: 'warn', detail: 'Enter price above to enable range checks.', urgency: 1, pct: null };
   if (price < low) {
     const d = ((low - price) / low * 100).toFixed(2);
@@ -208,13 +134,10 @@ function rangeHealth(price, low, high) {
 }
 
 // ── Helpers ────────────────────────────────────────────────────
-const fmt  = (n, d = 2) => (n != null && Number.isFinite(Number(n))) ? Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
-const fmtP = n => isFinite(n) ? n.toFixed(6) : '—';
+const fmt  = (n, d = 2) => isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+const fmtP = n => (n != null && Number.isFinite(Number(n))) ? Number(n).toFixed(6) : '—';
 const esc  = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
-const currentPrice = () =>
-  Number.isFinite(state.manualPrice) ? state.manualPrice :
-  Number.isFinite(state.livePrice) ? state.livePrice :
-  null;
+const currentPrice = () => isFinite(state.manualPrice) ? state.manualPrice : state.livePrice;
 
 // ── Render ─────────────────────────────────────────────────────
 function getVisible() {
@@ -259,9 +182,7 @@ function renderCards(bots) {
   el.cardsGrid.innerHTML = bots.map(b => {
     const h      = b.health;
     const pnlCls = b.totalProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
-    const buf = Number.isFinite(p) && b.breakEven > 0
-  ? ((p - b.breakEven) / b.breakEven * 100)
-  : null;
+    const buf    = isFinite(p) && b.breakEven > 0 ? ((p - b.breakEven) / b.breakEven * 100) : null;
     const barPct = h.pct != null ? Math.min(100, Math.max(0, h.pct)) : 50;
     const rw     = (isFinite(b.rangeHigh) && isFinite(b.rangeLow)) ? ((b.rangeHigh - b.rangeLow) / b.rangeLow * 100).toFixed(1) : '—';
     const apiTag = b.apiLinked ? `<span class="badge badge-api">API</span>` : '';
@@ -343,9 +264,6 @@ function render() {
 
 // ── Remove bot ────────────────────────────────────────────────
 window.removeBot = async (id) => {
-  // Added this line to trigger the native confirmation popup
-  if (!confirm("Are you sure you want to permanently delete this bot?")) return;
-
   if (state.supabaseReady) {
     try { await sb.remove('bots', id); } catch (e) { console.warn('Remove failed:', e); }
   }
@@ -364,36 +282,17 @@ async function submitPasteBot() {
   el.submitPaste.disabled = true;
   el.submitPaste.textContent = 'Saving…';
 
-  // --- Check for duplicates ---
-  const getGrids = (gb) => (gb || '').split(':').reduce((sum, v) => sum + (parseInt(v) || 0), 0);
-  const existing = state.bots.find(b => 
-    b.owner === owner && 
-    b.rangeLow === parsed.rangeLow && 
-    b.rangeHigh === parsed.rangeHigh && 
-    getGrids(b.gridBalance) === getGrids(parsed.gridBalance) &&
-    b.investment === parsed.investment
-  );
-  
-  if (existing) {
-    if (state.supabaseReady) {
-      try { await sb.remove('bots', existing.id); } 
-      catch(e) { console.warn('Failed to remove duplicate:', e); }
-    }
-    state.bots = state.bots.filter(b => b.id !== existing.id);
-  }
-  // ----------------------------
-
   const record = {
     owner, strategy, note, ...parsed,
     apiLinked: false,
-    createdAt: new Date().toISOString(), 
+    createdAt: new Date().toISOString(),
     id: crypto.randomUUID(),
   };
-  
+
   if (state.supabaseReady) {
     try {
       const rows = await sb.insert('bots', {
-        owner, strategy, note, 
+        owner, strategy, note,
         pair: parsed.pair, snapshot_price: parsed.snapshotPrice,
         runtime: parsed.runtime, arb_24h: parsed.arb24h, arb_total: parsed.arbTotal,
         investment: parsed.investment, total_profit: parsed.totalProfit,
@@ -544,7 +443,7 @@ async function fetchPrice() {
     try {
       const price = await source();
       state.livePrice = price;
-      el.priceVal.textContent = price.toFixed(6);
+      el.priceVal.textContent = Number.isFinite(Number(price)) ? Number(price).toFixed(6) : '—';
       el.priceDot.className = 'price-dot live';
       render();
       return;
@@ -614,55 +513,12 @@ el.themeToggle.addEventListener('click', () => {
 });
 el.botPasteInput.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submitPasteBot(); });
 
-// ── Screenshot OCR Logic ─────────────────────────────────────────
-el.botImageInput?.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  el.ocrStatus.textContent = 'Scanning image for text... please wait.';
-  el.submitPaste.disabled = true; // Prevent submission during scan
-
-  try {
-    // Run the image through Tesseract.js
-    const result = await Tesseract.recognize(file, 'eng', {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          el.ocrStatus.textContent = `Scanning: ${Math.round(m.progress * 100)}%`;
-        }
-      }
-    });
-
-    // Take the scanned text and dump it into your existing text area
-    el.botPasteInput.value = result.data.text;
-    
-    el.ocrStatus.textContent = 'Scan complete! You can now submit.';
-    el.submitPaste.disabled = false;
-    
-  } catch (err) {
-    console.error('OCR Error:', err);
-    el.ocrStatus.textContent = 'Failed to read image. Please paste text manually.';
-    el.submitPaste.disabled = false;
-  }
-});
-
 // ── Init ──────────────────────────────────────────────────────
 (async function init() {
   state.supabaseReady = (
     typeof SUPABASE_URL === 'string' && SUPABASE_URL.includes('supabase.co') &&
     typeof SUPABASE_ANON === 'string' && SUPABASE_ANON.length > 10
   );
-  
-  // --- Hide features for future use ---
-  // Hides the second tab (API key sync)
-  const apiTab = document.querySelectorAll('.tab')[1];
-  if (apiTab) apiTab.style.display = 'none';
-  
-  // Hides the Strategy dropdown's parent wrapper
-  if (el.strategyInput && el.strategyInput.parentElement) {
-    el.strategyInput.parentElement.style.display = 'none';
-  }
-  // ------------------------------------
-
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(prefersDark ? 'dark' : 'light');
   render();
