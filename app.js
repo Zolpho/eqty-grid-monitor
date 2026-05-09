@@ -114,49 +114,92 @@ Total Profit(USDT)
 
 // ── Parser ─────────────────────────────────────────────────────
 function parseBotText(raw) {
+  if (raw.includes('Investment(USDT)') || raw.includes('Grid Profit/Unrealized PNL')) {
+    return parseWebBotText(raw);
+  } else {
+    return parseMobileOCRText(raw);
+  }
+}
+
+function parseWebBotText(raw) {
   const text = raw.replace(/\u00a0/g, ' ').trim();
   const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
   const j = lines.join('\n');
 
-  const n = s => {
-    if (s == null) return null;
-    const cleaned = String(s).replace(/[^0-9+\-.]/g, '');
-    if (!cleaned) return null;
-    const v = Number(cleaned);
-    return Number.isFinite(v) ? v : null;
-  };
-
   const pairPrice = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
-  const arbitrage = j.match(/24h\/Total Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
+  const arbitrage = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
   const investment = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const totalProfit = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
   const gpBlock = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const breakEven = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
-
-  const rangeLine = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
-  const gridsLine = j.match(/(?:^|\n)\s*(\d+\s*:\s*\d+)\s*(?:\n|$)/);
-  const aprBlock = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
-
-  const runtimeLine = lines.find(l => /\d+d\s+\d+h/i.test(l) || /\d+h\s+\d+m/i.test(l)) || '—';
+  const aprBlock = j.match(/Grid APR[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%(?:\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%)?/i);
+  const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
+  const rangeValues = j.match(/Price Range.*?\n\s*([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
+  const gridBalance = j.match(/(\d+\s*:\s*\d+)/);
 
   return {
     pair: pairPrice?.[1] ?? 'EQTY/USDT',
-    snapshotPrice: n(pairPrice?.[2]),
-    runtime: runtimeLine,
-    arb24h: n(arbitrage?.[1]) ?? 0,
-    arbTotal: n(arbitrage?.[2]) ?? 0,
-    investment: n(investment?.[1]) ?? 0,
-    totalProfit: n(totalProfit?.[1]) ?? 0,
-    totalProfitPct: n(totalProfitPct?.[1]) ?? 0,
-    gridProfit: n(gpBlock?.[1]) ?? 0,
-    unrealized: n(gpBlock?.[2]) ?? 0,
-    breakEven: n(breakEven?.[1]) ?? 0,
-    rangeLow: n(rangeLine?.[1]),
-    rangeHigh: n(rangeLine?.[2]),
-    gridBalance: gridsLine?.[1]?.replace(/\s+/g, '') ?? '—',
-    gridApr: n(aprBlock?.[1]) ?? 0,
-    apr: n(aprBlock?.[2]) ?? 0,
+    snapshotPrice: parseNum(pairPrice?.[2]),
+    runtime: runtimeMatch ? runtimeMatch[1] : '—',
+    arb24h: parseNum(arbitrage?.[1]) ?? 0,
+    arbTotal: parseNum(arbitrage?.[2]) ?? 0,
+    investment: parseNum(investment?.[1]) ?? 0,
+    totalProfit: parseNum(totalProfit?.[1]) ?? 0,
+    totalProfitPct: parseNum(totalProfitPct?.[1]) ?? 0,
+    gridProfit: parseNum(gpBlock?.[1]) ?? 0,
+    unrealized: parseNum(gpBlock?.[2]) ?? 0,
+    breakEven: parseNum(breakEven?.[1]) ?? 0,
+    rangeLow: parseNum(rangeValues?.[1]),
+    rangeHigh: parseNum(rangeValues?.[2]),
+    gridBalance: gridBalance?.[1]?.replace(/\s+/g, '') ?? '—',
+    gridApr: parseNum(aprBlock?.[1]) ?? 0,
+    apr: parseNum(aprBlock?.[2]) ?? parseNum(aprBlock?.[1]) ?? 0,
+  };
+}
+
+function parseMobileOCRText(raw) {
+  const text = raw.replace(/\u00a0/g, ' ').trim();
+  const j = text.split(/\n+/).map(l => l.trim()).filter(Boolean).join(' ');
+
+  const invProfit = j.match(/Investment[\s\S]*?Total Profit[\s\S]*?([0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%/i);
+  const gridUnreal = j.match(/Grid Profit[\s\S]*?Unrealized PNL[\s\S]*?Grid APR[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%/i);
+  const beRange = j.match(/Break-Even[\s\S]*?Price Range[\s\S]*?([0-9]*\.?[0-9]+)[\s\S]*?([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
+
+  let gridBalance = '—';
+  const afterAprSplit = j.split(/APR[\s\S]*?(?:--|[+\-]?[0-9]*\.?[0-9]+%?)/i);
+
+  if (afterAprSplit.length > 1) {
+    const tailText = afterAprSplit.pop();
+    const tailDigits = tailText.match(/\d/g);
+
+    if (tailDigits && tailDigits.length >= 2) {
+      gridBalance = `${tailDigits[tailDigits.length - 2]}:${tailDigits[tailDigits.length - 1]}`;
+    }
+  }
+
+  const pairPrice = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
+  const arbitrage = j.match(/Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
+  const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
+  const totalApr = j.match(/Price Range[\s\S]*?APR[\s\S]*?(--|[+\-]?[0-9]*\.?[0-9]+%)/i);
+
+  return {
+    pair: pairPrice?.[1] ?? 'EQTY/USDT',
+    snapshotPrice: parseNum(pairPrice?.[2]),
+    runtime: runtimeMatch ? runtimeMatch[1] : '—',
+    arb24h: parseNum(arbitrage?.[1]) ?? 0,
+    arbTotal: parseNum(arbitrage?.[2]) ?? 0,
+    investment: parseNum(invProfit?.[1]) ?? 0,
+    totalProfit: parseNum(invProfit?.[2]) ?? 0,
+    totalProfitPct: parseNum(invProfit?.[3]) ?? 0,
+    gridProfit: parseNum(gridUnreal?.[1]) ?? 0,
+    unrealized: parseNum(gridUnreal?.[2]) ?? 0,
+    breakEven: parseNum(beRange?.[1]) ?? 0,
+    rangeLow: parseNum(beRange?.[2]),
+    rangeHigh: parseNum(beRange?.[3]),
+    gridBalance,
+    gridApr: parseNum(gridUnreal?.[3]) ?? 0,
+    apr: (totalApr?.[1] === '--' || totalApr?.[1] == null) ? null : parseNum(totalApr?.[1]) ?? null,
   };
 }
 
