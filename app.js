@@ -94,14 +94,17 @@ function parseBotText(raw) {
   };
 
   const pairPrice      = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
-  const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\/(\d+)/i);
+  const arbitrage      = j.match(/24h\/Total Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
   const investment     = j.match(/Investment\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const totalProfit    = j.match(/Total Profit\(USDT\)\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const totalProfitPct = j.match(/\(([+\-]?[0-9]*\.?[0-9]+)%\)/);
   const gpBlock        = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const breakEven      = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
-  const rangeBlock     = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)\s*\n\s*([0-9]+:[0-9]+)/i);
+
+  const rangeLine      = j.match(/Price Range\/No\. of Grids\s*\n?\s*([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
+  const gridsLine      = j.match(/(?:^|\n)\s*(\d+\s*:\s*\d+)\s*(?:\n|$)/);
   const aprBlock       = j.match(/Grid APR\/APR\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)%\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%/i);
+
   const runtimeLine    = lines.find(l => /\d+d\s+\d+h/i.test(l) || /\d+h\s+\d+m/i.test(l)) || '—';
 
   return {
@@ -116,9 +119,9 @@ function parseBotText(raw) {
     gridProfit: n(gpBlock?.[1]) ?? 0,
     unrealized: n(gpBlock?.[2]) ?? 0,
     breakEven: n(breakEven?.[1]) ?? 0,
-    rangeLow: n(rangeBlock?.[1]),
-    rangeHigh: n(rangeBlock?.[2]),
-    gridBalance: rangeBlock?.[3] ?? '—',
+    rangeLow: n(rangeLine?.[1]),
+    rangeHigh: n(rangeLine?.[2]),
+    gridBalance: gridsLine?.[1]?.replace(/\s+/g, '') ?? '—',
     gridApr: n(aprBlock?.[1]) ?? 0,
     apr: n(aprBlock?.[2]) ?? 0,
   };
@@ -193,7 +196,9 @@ function renderCards(bots) {
     const pnlCls = b.totalProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
     const buf    = isFinite(p) && b.breakEven > 0 ? ((p - b.breakEven) / b.breakEven * 100) : null;
     const barPct = h.pct != null ? Math.min(100, Math.max(0, h.pct)) : 50;
-    const rw     = (isFinite(b.rangeHigh) && isFinite(b.rangeLow)) ? ((b.rangeHigh - b.rangeLow) / b.rangeLow * 100).toFixed(1) : '—';
+    const rw = (Number.isFinite(b.rangeLow) && Number.isFinite(b.rangeHigh) && b.rangeLow > 0)
+  ? ((b.rangeHigh - b.rangeLow) / b.rangeLow * 100).toFixed(1)
+  : '—';    
     const apiTag = b.apiLinked ? `<span class="badge badge-api">API</span>` : '';
     return `
     <article class="panel bot-card" id="card-${esc(b.id)}">
