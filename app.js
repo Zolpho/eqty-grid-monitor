@@ -226,7 +226,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
   '"': '&quot;',
   "'": '&#39;'
 })[m]);
-const currentPrice = () => isFinite(state.manualPrice) ? state.manualPrice : state.livePrice;
+const currentPrice = () => Number.isFinite(state.manualPrice) ? state.manualPrice : state.livePrice;
 
 // ── Render ─────────────────────────────────────────────────────
 function getVisible() {
