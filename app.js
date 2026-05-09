@@ -437,70 +437,94 @@ window.removeBot = async (id) => {
 
 // ── Submit (paste) ────────────────────────────────────────────
 async function submitPasteBot() {
+  console.log('submitPasteBot fired');
+
   const raw = el.botPasteInput.value.trim();
   if (!raw) {
     showMsg(el.submitMsg, 'Paste a KuCoin bot snapshot first.', 'error');
     return;
   }
+
   const owner = el.ownerInput.value.trim() || 'Anonymous';
   const strategy = el.strategyInput.value;
   const note = el.noteInput.value.trim();
-  const parsed = parseBotText(raw);
+
+  let parsed;
+  try {
+    parsed = parseBotText(raw);
+    console.log('raw =', raw);
+    console.log('parsed =', parsed);
+  } catch (err) {
+    console.error('parseBotText failed:', err);
+    showMsg(el.submitMsg, `Parse failed: ${err.message}`, 'error');
+    return;
+  }
+
   el.submitPaste.disabled = true;
   el.submitPaste.textContent = 'Saving…';
 
-  const record = {
-    owner,
-    strategy,
-    note,
-    ...parsed,
-    apiLinked: false,
-    createdAt: new Date().toISOString(),
-    id: crypto.randomUUID(),
-  };
+  try {
+    const record = {
+      owner,
+      strategy,
+      note,
+      ...parsed,
+      apiLinked: false,
+      createdAt: new Date().toISOString(),
+      id: crypto.randomUUID(),
+    };
 
-  if (state.supabaseReady) {
-    try {
-      const rows = await sb.insert('bots', {
-        owner,
-        strategy,
-        note,
-        pair: parsed.pair,
-        snapshot_price: parsed.snapshotPrice,
-        runtime: parsed.runtime,
-        arb_24h: parsed.arb24h,
-        arb_total: parsed.arbTotal,
-        investment: parsed.investment,
-        total_profit: parsed.totalProfit,
-        total_profit_pct: parsed.totalProfitPct,
-        grid_profit: parsed.gridProfit,
-        unrealized: parsed.unrealized,
-        break_even: parsed.breakEven,
-        range_low: parsed.rangeLow,
-        range_high: parsed.rangeHigh,
-        grid_balance: parsed.gridBalance,
-        grid_apr: parsed.gridApr,
-        apr: parsed.apr,
-        api_linked: false,
-      });
-      // Use the DB-assigned id if available
-      if (rows?.[0]?.id) record.id = rows[0].id;
-      showMsg(el.submitMsg, '✓ Bot saved to community dashboard.', 'success');
-    } catch (err) {
-      showMsg(el.submitMsg, `Saved locally only (DB error: ${err.message}).`, 'error');
+    if (state.supabaseReady) {
+      try {
+        const rows = await sb.insert('bots', {
+          owner,
+          strategy,
+          note,
+          pair: parsed.pair,
+          snapshot_price: parsed.snapshotPrice,
+          runtime: parsed.runtime,
+          arb_24h: parsed.arb24h,
+          arb_total: parsed.arbTotal,
+          investment: parsed.investment,
+          total_profit: parsed.totalProfit,
+          total_profit_pct: parsed.totalProfitPct,
+          grid_profit: parsed.gridProfit,
+          unrealized: parsed.unrealized,
+          break_even: parsed.breakEven,
+          range_low: parsed.rangeLow,
+          range_high: parsed.rangeHigh,
+          grid_balance: parsed.gridBalance,
+          grid_apr: parsed.gridApr,
+          apr: parsed.apr,
+          api_linked: false,
+        });
+
+        if (rows?.[0]?.id) record.id = rows[0].id;
+        showMsg(el.submitMsg, '✓ Bot saved to community dashboard.', 'success');
+      } catch (err) {
+        console.error('DB insert failed:', err);
+        showMsg(el.submitMsg, `Saved locally only (DB error: ${err.message}).`, 'error');
+      }
+    } else {
+      showMsg(el.submitMsg, '⚠ Supabase not configured — saved locally only.', 'error');
     }
-  } else {
-    showMsg(el.submitMsg, '⚠ Supabase not configured — saved locally only.', 'error');
-  }
 
-  state.bots.unshift(record);
-  render();
-  el.botPasteInput.value = '';
-  el.ownerInput.value = '';
-  el.noteInput.value = '';
-  el.submitPaste.disabled = false;
-  el.submitPaste.textContent = 'Submit bot';
-  setTimeout(closeModal, 600);
+    state.bots.unshift(record);
+    console.log('record added =', record);
+    render();
+
+    el.botPasteInput.value = '';
+    el.ownerInput.value = '';
+    el.noteInput.value = '';
+    el.submitPaste.textContent = 'Submit bot';
+    setTimeout(closeModal, 600);
+  } catch (err) {
+    console.error('submitPasteBot runtime failed:', err);
+    showMsg(el.submitMsg, `Submit failed: ${err.message}`, 'error');
+  } finally {
+    el.submitPaste.disabled = false;
+    el.submitPaste.textContent = 'Submit bot';
+  }
 }
 
 // ── Submit (API key) — FIXED ──────────────────────────────────
