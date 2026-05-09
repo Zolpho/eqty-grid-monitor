@@ -160,6 +160,7 @@ function parseBotText(raw) {
 
 // ── Range health ───────────────────────────────────────────────
 function rangeHealth(price, low, high) {
+console.log('rangeHealth input =>', { price, low, high });  
   if (!isFinite(price) || !isFinite(low) || !isFinite(high))
     return {
       label: 'No live price',
@@ -285,6 +286,10 @@ function renderCards(bots) {
   el.emptyState.hidden = bots.length > 0;
   const p = currentPrice();
   el.cardsGrid.innerHTML = bots.map(b => {
+console.log('livePrice:', state.livePrice);
+console.log('manualPrice:', state.manualPrice);
+console.log('currentPrice():', currentPrice());
+console.log('bot:', b.owner, 'low:', b.rangeLow, 'high:', b.rangeHigh, 'breakEven:', b.breakEven);
     const h = b.health;
     const pnlCls = b.totalProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
     const buf = isFinite(p) && b.breakEven > 0 ? ((p - b.breakEven) / b.breakEven * 100) : null;
