@@ -69,6 +69,8 @@ const el = {
   strategyInput: $('strategyInput'),
   botPasteInput: $('botPasteInput'),
   noteInput: $('noteInput'),
+  botImageInput: $('botImageInput'),
+  ocrStatus: $('ocrStatus'),
   submitPaste: $('submitPaste'),
   submitMsg: $('submitMsg'),
   loadSample: $('loadSample'),
@@ -676,6 +678,31 @@ el.loadSample.addEventListener('click', () => {
 el.refreshBtn.addEventListener('click', () => {
   fetchPrice();
   loadBots();
+});
+el.botImageInput?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  el.ocrStatus.textContent = 'Scanning image for text... please wait.';
+  el.submitPaste.disabled = true;
+
+  try {
+    const result = await Tesseract.recognize(file, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          el.ocrStatus.textContent = `Scanning: ${Math.round(m.progress * 100)}%`;
+        }
+      }
+    });
+
+    el.botPasteInput.value = result.data.text;
+    el.ocrStatus.textContent = 'Scan complete! You can now submit.';
+    el.submitPaste.disabled = false;
+  } catch (err) {
+    console.error('OCR Error:', err);
+    el.ocrStatus.textContent = 'Failed to read image. Please paste text manually.';
+    el.submitPaste.disabled = false;
+  }
 });
 el.exportBtn.addEventListener('click', exportJson);
 el.filterStrategy.addEventListener('change', render);
