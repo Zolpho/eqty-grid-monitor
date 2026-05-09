@@ -185,6 +185,15 @@ code{font-family:var(--font-mono);background:var(--color-surface-offset);padding
 .site-footer{display:flex;justify-content:space-between;align-items:center;padding-top:var(--space-6);border-top:1px solid var(--color-divider);font-size:var(--text-xs);color:var(--color-text-faint)}
 .helper{font-size:var(--text-xs);color:var(--color-text-muted)}
 
+.card-meta-lines{
+  display:grid;
+  gap:.2rem;
+}
+
+.card-meta-lines .helper{
+  line-height:1.45;
+}
+
 /* SKELETON */
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 .skeleton{background:linear-gradient(90deg,var(--color-surface-offset) 25%,var(--color-surface-dynamic) 50%,var(--color-surface-offset) 75%);background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite;border-radius:var(--radius-sm)}

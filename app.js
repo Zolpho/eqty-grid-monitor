@@ -214,8 +214,10 @@ function renderCards(bots) {
         <button class="card-remove" onclick="removeBot('${esc(b.id)}')" aria-label="Remove bot">✕</button>
       </div>
       <div>
+      <div class="card-meta-lines">
         <div class="helper">${esc(b.pair)} · ${esc(b.runtime)}</div>
-        <div class="pnl-row" style="margin-top:.5rem">
+        <div class="helper">Arbitrage (24h/total): ${esc(b.arb24h)}/${esc(b.arbTotal)}</div>
+        <div class="pnl-row" style="margin-top:.5rem">        
           <div class="pnl-main ${pnlCls}">${b.totalProfit >= 0 ? '+' : ''}${fmt(b.totalProfit)} USDT</div>
           <div class="pnl-pct">${b.totalProfitPct >= 0 ? '+' : ''}${fmt(b.totalProfitPct)}%</div>
         </div>
