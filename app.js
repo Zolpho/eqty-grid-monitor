@@ -120,6 +120,20 @@ const parseNum = s => {
   return Number.isFinite(v) ? v : null;
 };
 
+function extractRuntime(text) {
+  const normalized = String(text)
+    .replace(/\u00a0/g, ' ')
+    .replace(/(\d)([dhms])/gi, '$1$2 ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const m = normalized.match(
+    /(\d+\s*d\s+\d+\s*h(?:\s+\d+\s*m)?|\d+\s*h(?:\s+\d+\s*m)?|\d+\s*m(?:\s+\d+\s*s)?)/i
+  );
+
+  return m ? m[1].replace(/\s+/g, ' ').trim() : '—';
+}
+
 // ── Parser ─────────────────────────────────────────────────────
 function parseBotText(raw) {
   if (raw.includes('Investment(USDT)') || raw.includes('Grid Profit/Unrealized PNL')) {
@@ -142,14 +156,13 @@ function parseWebBotText(raw) {
   const gpBlock = j.match(/Grid Profit\/Unrealized PNL\s*\n?\s*([+\-]?[0-9]*\.?[0-9]+)\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)/i);
   const breakEven = j.match(/Break-Even\s*\n?\s*([0-9]*\.?[0-9]+)/i);
   const aprBlock = j.match(/Grid APR[\s\S]*?([+\-]?[0-9]*\.?[0-9]+)%(?:\s*\n\s*([+\-]?[0-9]*\.?[0-9]+)%)?/i);
-  const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
   const rangeValues = j.match(/Price Range.*?\n\s*([0-9]*\.?[0-9]+)\s*[~\-–]\s*([0-9]*\.?[0-9]+)/i);
   const gridBalance = j.match(/(\d+\s*:\s*\d+)/);
 
   return {
     pair: pairPrice?.[1] ?? 'EQTY/USDT',
     snapshotPrice: parseNum(pairPrice?.[2]),
-    runtime: runtimeMatch ? runtimeMatch[1] : '—',
+    runtime: extractRuntime(j),
     arb24h: parseNum(arbitrage?.[1]) ?? 0,
     arbTotal: parseNum(arbitrage?.[2]) ?? 0,
     investment: parseNum(investment?.[1]) ?? 0,
@@ -188,13 +201,12 @@ function parseMobileOCRText(raw) {
 
   const pairPrice = j.match(/([A-Z]+\/[A-Z]+)\s*([0-9]+\.?[0-9]*)/);
   const arbitrage = j.match(/Arbitrage:\s*(\d+)\s*\/\s*(\d+)/i);
-  const runtimeMatch = j.match(/(\d+d\s+\d+h(?:\s+\d+m)?|\d+h\s+\d+m(?:\s+\d+s)?)/i);
   const totalApr = j.match(/Price Range[\s\S]*?APR[\s\S]*?(--|[+\-]?[0-9]*\.?[0-9]+%)/i);
 
   return {
     pair: pairPrice?.[1] ?? 'EQTY/USDT',
     snapshotPrice: parseNum(pairPrice?.[2]),
-    runtime: runtimeMatch ? runtimeMatch[1] : '—',
+    runtime: extractRuntime(j),
     arb24h: parseNum(arbitrage?.[1]) ?? 0,
     arbTotal: parseNum(arbitrage?.[2]) ?? 0,
     investment: parseNum(invProfit?.[1]) ?? 0,
