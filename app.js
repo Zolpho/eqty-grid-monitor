@@ -112,6 +112,14 @@ Total Profit(USDT)
 	+95.63%
 	+78.84%`;
 
+const parseNum = s => {
+  if (s == null) return null;
+  const str = String(s).replace(/[^0-9+\-.]/g, '');
+  if (!str) return null;
+  const v = Number(str);
+  return Number.isFinite(v) ? v : null;
+};
+
 // ── Parser ─────────────────────────────────────────────────────
 function parseBotText(raw) {
   if (raw.includes('Investment(USDT)') || raw.includes('Grid Profit/Unrealized PNL')) {
